@@ -1,0 +1,307 @@
+--	Sortowanie zestawu
+--	Funkcja ORDER
+--	Bez sortowania kolejnosc wynika z kolejnosci w definicji hierarchii
+
+Select 
+{[Measures].[Reseller Sales Amount]} On Columns,
+{[Product].[Product].[Product].MEMBERS} On Rows
+From [Adventure Works];
+
+-- Z uzyciem funkcji sortowania
+-- sortowanie po [Measures].[Reseller Sales Amount]
+
+
+Select 
+{[Measures].[Reseller Sales Amount]} On Columns,
+Order (
+{[Product].[Product].[Product].MEMBERS},[Measures].[Reseller Sales Amount],DESC
+) On Rows
+From [Adventure Works];
+
+
+--	Sortowanie zestawu, gdy w hierarchii nie wszystkie wartosci wystepuja (breaking hierarchical constraints)
+--	Przyklad z null-ami w hierarchi
+
+Select 
+{[Measures].[Reseller Sales Amount]} On Columns,
+{[Product].[Subcategory].[Subcategory].Members} On Rows
+From [Adventure Works];
+
+--	W celu lepszeg ozrozumienia 
+--	dodajemy jescze relacje do kategorii
+--	na wyniku widac domyslny sposob sortowania Category i nastepnie Subcategory
+Select 
+{[Measures].[Reseller Sales Amount]} On Columns,
+{[Product].[Category].[Category].Members}*
+{[Product].[Subcategory].[Subcategory].Members} 
+On Rows
+From [Adventure Works];
+
+--	Dodajemy sortowanie
+--	zwrocic uwage ze zostalo zachowane sortowanie po
+--  Category natomiast Subcatwgory juz nie
+--	jezeli chemy rozbic sortowanie wynikajace z hierarchii uzywamy BDESC lub BASC
+
+Select 
+{[Measures].[Reseller Sales Amount]} On Columns,
+Order(
+{[Product].[Category].[Category].Members}*
+{[Product].[Subcategory].[Subcategory].Members},[Measures].[Reseller Sales Amount],DESC
+)
+On Rows
+From [Adventure Works];
+
+--	Operator zakresu (:)
+--	rowniez wyznacza okreslona kolejnosc 
+--	zwrocic uwage na zakres od 2004 do 2002
+
+Select 
+{[Measures].[Reseller Sales Amount]} On Columns,
+{[Date].[Calendar].[CY 2003]:[Date].[Calendar].[CY 2002]}On Rows
+From [Adventure Works];
+
+--  Funkcja Hierarchize()
+--	uporzadkowanie wyniku zgodnie z hierarchia
+
+SELECT
+    {([Measures].[Reseller Sales Amount])} ON COLUMNS,
+    Hierarchize(
+       {
+           ([Product].[Product Categories].[Subcategory].[Road Bikes]), 
+           ([Product].[Product Categories].[All Products]),
+           ([Product].[Product Categories].[Subcategory].[Mountain Bikes]), 
+           ([Product].[Product Categories].[Category].[Bikes]),
+           ([Product].[Product Categories].[Subcategory].[Touring Bikes]) 
+           }
+       ) ON ROWS
+FROM [Adventure Works];
+
+--	jw tylko w odwrotnej kolejnosci 
+SELECT
+    {([Measures].[Reseller Sales Amount])} ON COLUMNS,
+    Hierarchize(
+        {
+           ([Product].[Product Categories].[Subcategory].[Road Bikes]), 
+           ([Product].[Product Categories].[All Products]),
+           ([Product].[Product Categories].[Subcategory].[Mountain Bikes]), 
+           ([Product].[Product Categories].[Category].[Bikes]),
+           ([Product].[Product Categories].[Subcategory].[Touring Bikes]) 
+           },
+        POST
+        ) ON ROWS
+FROM [Adventure Works];
+
+--	Cwiczenie 1
+-- Uporzadkuj zgodnie z hierarchia dane w raporcie dla:
+//       [Geography].[Geography].[Country].[Canada]
+//       [Geography].[Geography].[Country].[United States]
+//       [Geography].[Geography].[State-Province].[Alberta]
+//       [Geography].[Geography].[State-Province].[Brunswick]
+//       ([Geography].[Geography].[State-Province].[Colorado]
+--
+/*
+				Reseller Sales Amount
+Canada			$14,377,925.60
+Alberta			$1,396,026.42
+Brunswick		$325,022.91
+United States	$53,607,801.21
+Colorado		$2,395,913.84
+*/
+
+SELECT      
+   {([Measures].[Reseller Sales Amount])}  ON Columns,
+    Hierarchize
+    ( { ([Geography].[Geography].[Country].[Canada])
+       ,([Geography].[Geography].[Country].[United States])
+       ,([Geography].[Geography].[State-Province].[Alberta])
+       ,([Geography].[Geography].[State-Province].[Brunswick])
+       ,([Geography].[Geography].[State-Province].[Colorado]) 
+    }) On Rows 
+FROM [Adventure Works];
+
+/*---------------------------------------------------------------------------*/
+
+-- Zwracanie pierwszych x pozycji do wyniku
+-- TopCount()
+
+Select 
+{[Measures].[Reseller Sales Amount]} On Columns,
+TopCount ( -- zamiast Order
+{[Product].[Subcategory].[Subcategory].MEMBERS}
+ ,5 --ilosc zwracanych pozycji do wyniku
+ ,[Measures].[Reseller Sales Amount]
+) On Rows
+From [Adventure Works];
+
+-- Zwracanie ostatnich x pozycji do wyniku
+-- BottomCount()
+
+Select 
+{[Measures].[Reseller Sales Amount]} On Columns,
+BottomCount ( -- zamiast Order
+{[Product].[Subcategory].[Subcategory].MEMBERS}
+ ,5 --ilosc zwracanych pozycji do wyniku
+ ,[Measures].[Reseller Sales Amount]
+) On Rows
+From [Adventure Works];
+
+-- Funkcje HEAD i TAIL
+
+Select 
+{[Measures].[Reseller Sales Amount]} On Columns,
+head(  -- ZAMIENIC NA tail
+{[Product].[Subcategory].[Subcategory].MEMBERS}
+ ,[Measures].[Reseller Sales Amount]
+) On Rows
+From [Adventure Works];
+
+--	Funkcja ITEM
+--	uzyjemy gdy zamierzamy zwrocic okreslona pozycje z zestawu
+--	pokazac caly zestaw 
+--	nastepnie uzyc ITME(x) x przyjmuje wartosc od 0 do ...
+
+SELECT 
+{[Measures].[Reseller Sales Amount]} ON Columns,
+{( [Date].[Calendar Year].Allmembers.Item(3) )} ON Rows 
+FROM [Adventure Works] ;
+
+
+--	CWICZENIE 1
+--  Pokaz liste najlepiej sprzedajacych sie produktow dla Internet Sales Amount
+--	w latach 2001 - 2004
+/*
+            TopName
+CY 2001     Road-150 Red, 62
+CY 2002     Road-150 Red, 48
+CY 2003     Mountain-200 Black, 46
+CY 2004     Mountain-200 Silver, 38
+*/
+WITH 
+MEMBER [Measures].[TopName] AS
+    {
+        EXISTING 
+        TopCount(
+            [Product].[Product].[Product].Members, 
+            1,
+            ([Measures].[Internet Sales Amount])
+            ) 
+        }.Item(0).Item(0).Name
+SELECT
+    { ([Measures].[TopName])} ON COLUMNS,
+    {
+        ([Date].[Calendar Year].[CY 2001]):([Date].[Calendar Year].[CY 2004])
+        } ON ROWS
+FROM [Adventure Works];
+
+
+/*-----------------------------------------------------------------------------*/
+
+-- Funkcja FILTER()
+-- bez funkcji
+Select 
+{([Measures].[Reseller Sales Amount]),
+ ([Measures].[Internet Sales Amount])
+} On Columns,
+{[Product].[Product].[Product].MEMBERS} On Rows
+From [Adventure Works];
+
+--	z uzyciem funkcji FILTER()
+--	porownac ilosc zwracanych tuples w pierwszym i drugim przykladzie
+
+Select 
+{([Measures].[Reseller Sales Amount]),
+ ([Measures].[Internet Sales Amount])
+} On Columns,
+{
+Filter(
+	[Product].[Product].[Product].MEMBERS, ([Measures].[Reseller Sales Amount]<[Measures].[Internet Sales Amount])
+	  )
+} On Rows
+From [Adventure Works];
+
+-- Filtrowanie z rozbudowanym wyrazeniem logicznym
+
+
+Select 
+{([Measures].[Reseller Sales Amount]),
+ ([Measures].[Internet Sales Amount])
+} On Columns,
+{    Filter(
+	[Product].[Product].[Product].MEMBERS,
+	 ([Measures].[Reseller Sales Amount])<([Measures].[Internet Sales Amount])
+	 AND
+	  (
+	  [Product].[Category].CURRENTMEMBER Is [Product].[Category].[Clothing]
+	  OR
+	  [Product].[Category].CURRENTMEMBER Is [Product].[Category].[Accessories]
+	  )
+	  )
+} On Rows
+From [Adventure Works];
+
+-- CWICZENIE 1
+--  Pokaz w raporcie Reseller Sales Amount
+--	wyniki sprzedazy tylko dla dla miast w United States
+/*
+	    Reseller Sales Amount
+Alabama	$45,429.03
+Arizona	$1,432,585.57
+...
+Wyoming	$851,293.69
+*/
+Select 
+{ [Measures].[Reseller Sales Amount]} On Columns,
+{
+	Filter(
+		   [Geography].[Geography].members,
+		   ([Geography].[Geography].CurrentMember.Parent IS
+		   [Geography].[Geography].[United States])
+		   )} On Rows
+From [Adventure Works];
+------------------------------------------------------------------------------
+--	Funkcja NonEmpty() polecenie Non Empty
+
+--	Slowo kluczowe Non Empty, 
+--	czysci wynik z elementow nie zawierajacych zadnych danych, pustych (EMPTY)
+
+Select 
+{[Measures].[Reseller Sales Amount]} On Columns,
+Non Empty {[Product].[Product].[Product].MEMBERS} On Rows
+From [Adventure Works];
+
+--	Funkcja NonEmpty()
+--	efekt podobny do powyzszego
+Select 
+{[Measures].[Reseller Sales Amount]} On Columns,
+NonEmpty (	
+			{[Product].[Product].[Product].MEMBERS},
+			{[Measures].[Reseller Sales Amount]}		 
+			
+		 )On Rows
+From [Adventure Works];
+
+-- POROWNANIE!!!!!
+-- NON EMPTY i NONEMPTY()
+-- Funkcja jest przetwarzana na poziomie wymiaru co oznacza ze jezeli istniala
+-- sprzedaz dla produktu kiedykolwiek to wowczas nie jest trakotowane to jako empty i nie jest 
+-- kaeogia usuwana.
+-- slowo kluczowe NON EMPTY dziala na poziomie zwracanego set-u
+Select 
+{[Date].[Calendar].[Month].&[2004]&[7]} On Columns,
+Non Empty([Product].[Category].MEMBERS)On Rows
+From [Adventure Works]
+where [Measures].[Internet Sales Amount];
+
+Select 
+{[Date].[Calendar].[Month].&[2004]&[7]} On Columns,
+NonEmpty([Product].[Category].MEMBERS,[Measures].[Internet Sales Amount])On Rows
+From [Adventure Works]
+where [Measures].[Internet Sales Amount];
+
+
+
+
+
+
+
+

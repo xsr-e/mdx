@@ -1,0 +1,114 @@
+
+--	UNION(), INTERSECT(), EXCEPT()
+--	pozwalaja na pokazanie wszystkiego z obu zestawow, wspolnego zbioru lub z wykluczeniem drugiego zbioru
+--	omowic SET jak definiowac!!!
+With Set [A] As
+{
+[Product].[Category].[Accesories],
+[Product].[Category].[Accesories],
+[Product].[Category].[Bikes],
+[Product].[Category].[Clothing]
+}
+Set [B] As
+{
+[Product].[Category].[Bikes],
+[Product].[Category].[Clothing],
+[Product].[Category].[Components]
+}
+Select {[Measures].[Order Count]}On Columns,
+Union([A],[B]) On Rows -- zamienic na INTERSECT(), EXCEPT(), dodac all
+From [Adventure Works];
+
+
+
+Select
+{[Measures].[Reseller Sales Amount]}On Columns,
+UNION( --zastapic intersect,except
+TopCount(
+		{[Product].[Product].[Product].MEMBERS},
+		10, --!
+		([Measures].[Reseller Sales Amount],[Date].[Calendar Year].[CY 2004])),
+		
+		
+TopCount(
+		{[Product].[Product].[Product].MEMBERS},
+		10, --!
+		([Measures].[Reseller Sales Amount],[Date].[Calendar Year].[CY 2003]))
+		)On Rows
+From [Adventure Works]
+
+
+--	Union, Except, Intersect
+
+-- 3 sie powtarzaja !!!!
+SELECT
+    {([Measures].[Reseller Sales Amount])} ON COLUMNS,
+   Union(
+       TopCount(
+            {[Product].[Product].[Product].Members},
+            5,
+            ([Measures].[Reseller Sales Amount], [Date].[Calendar Year].[CY 2003])
+            ),
+        TopCount(
+            {[Product].[Product].[Product].Members},
+            5,
+            ([Measures].[Reseller Sales Amount], [Date].[Calendar Year].[CY 2004])
+           )
+        ) ON ROWS
+FROM [Adventure Works];
+
+
+--	Cwiczenie 1
+--	Utworz raport prezentujacy sprzedaz w poszczegolnych regionach
+--	tylko dla klientow z France
+--	wykonaj zadanie korzystajac z Intersect lub Except
+--	
+
+SELECT
+    [Sales Territory].[Sales Territory].[Region] ON COLUMNS,
+Intersect (
+		[Customer].[Customer Geography].[Country].members
+		,{[Customer].[Customer Geography].[Country].[France]}
+		)
+         ON ROWS
+FROM [Adventure Works];
+
+
+--  Cwiczenie 2
+--	Utworz raport prezentujacy sprzedaz w poszczegolnych latach kalendarzowych
+--	dla wszystkich kategorii produktow 
+--	z wykluczeniem Components
+--	wykonaj zadanie korzystajac z Intersect lub Except
+
+SELECT 
+    [Date].[Calendar].[Calendar Year].members ON COLUMNS,
+   Except
+      ([Product].[Product Categories].[Category].members ,
+         {[Product].[Product Categories].[Components]}
+      ) ON ROWS
+FROM
+   [Adventure Works];
+   
+   
+--  Cwiczenie 3
+--	Utworz raport prezentujacy sprzedaz 5 najlepiej sprzedajacych sie produktow 
+--	i 5 najgorzej sprzedajacych sie produktow w roku 2002 przez Internet, wynik posortuj
+--	w raporcie nie bierz pod uwage wartosci NULL 
+
+WITH 
+Set [T5Products] as 
+TopCount([Product].[Product Categories].[Product].members,5,([Measures].[Internet Sales Amount],[Date].[Calendar Year].&[2002]))
+Set [B5Products] as
+BottomCount(
+NonEmpty([Product].[Product Categories].[Product].members,
+         [Measures].[Internet Sales Amount])
+         ,5,[Measures].[Internet Sales Amount])
+         
+Set [T5B5Products] as
+ Union({[T5Products]},{[B5Products]})
+
+Select 
+[Measures].[Internet Sales Amount] On Columns,
+Order([T5B5Products] ,[Measures].[Internet Sales Amount],BDESC) On Rows
+From [Adventure Works]
+Where([Date].[Calendar Year].&[2002]); 

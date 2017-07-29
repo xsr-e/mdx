@@ -1,0 +1,129 @@
+-- SIMPLE CASE EXPRESSION
+With Member [Measures].[case] As
+CASE [Measures].[Internet Order Count]
+WHEN 0 THEN 0
+WHEN 1 THEN 1
+WHEN 2 THEN 2
+WHEN 3 THEN 3
+ELSE 4
+END
+Select  {[Measures].[case]} On Columns
+From [Adventure Works];
+
+--	SEARCHED CASE EXPRESSION
+
+With Member [Measures].[case] As
+CASE
+WHEN [Measures].[Internet Sales Amount]=0 THEN 0
+WHEN [Measures].[Internet Sales Amount]=1 THEN 1
+WHEN [Measures].[Internet Sales Amount]=2 THEN 2
+WHEN [Measures].[Internet Sales Amount]=3 THEN 3
+ELSE 4
+END
+Select  {[Measures].[case]} On Columns
+From [Adventure Works];
+
+
+--	Rank()
+--	zwrococ uwage na pozycje 2 i 3 takie same wartosci Internet Sales Amount
+--	rozne rankingi?
+
+WITH SET [ProductSet]
+AS
+ORDER ([Product].[Product].[Product].Members, [Measures].[Internet Sales Amount],DESC)
+MEMBER [Measures].[Rank] as
+RANK([Product].[Product].CurrentMember, [ProductSet])
+SELECT {[Measures].[Internet Sales Amount],[Measures].[Rank]} ON 0 ,
+[ProductSet] ON 1
+FROM
+[Adventure Works]
+WHERE
+[Date].[Calendar Year].&[2002];
+
+
+--	rozwiazaniem problemu powyzszego jest dodanie 
+--	atrybutu measueres dla Internet Sales Amount
+
+WITH SET [ProductSet]
+AS
+ORDER ([Product].[Product].[Product].Members, [Measures].[Internet Sales Amount],DESC)
+MEMBER [Measures].[Rank] as
+RANK([Product].[Product].CurrentMember, [ProductSet],[Measures].[Internet Sales Amount])
+SELECT {[Measures].[Internet Sales Amount],[Measures].[Rank]} ON 0 ,
+[ProductSet] ON 1
+FROM
+[Adventure Works]
+WHERE
+[Date].[Calendar Year].&[2002];
+
+--	LIKE i NOT LIKE 
+
+--	jezeli chcemy osiagnac ponizszy zapis w MDX
+--	LIKE ‘%Mary%’ to musimy 
+--	uzyc funkcji np:
+
+
+SELECT [Measures].[Internet Sales Amount] on columns,
+filter([Employee].[Employees].allmembers,
+instr([Employee].[Employees].currentmember.member_caption,'Mary')>0) on ROWS
+from [Adventure Works];
+
+--	NOT LIKE 
+
+SELECT [Measures].[Internet Sales Amount] on columns,
+filter([Employee].[Employees].allmembers,
+instr([Employee].[Employees].currentmember.member_caption,'Mary')=0) on ROWS
+from [Adventure Works];
+
+
+
+SELECT [Measures].[Internet Sales Amount] on columns,
+filter([Employee].[Employees].allmembers,
+instr([Employee].[Employees].currentmember.member_caption,'Da')>0 and
+instr([Employee].[Employees].currentmember.member_caption,'Smi')=0) on ROWS
+from [Adventure Works];
+
+-------------------------------------------------------------
+-- To filter based on members, we can use string comparison:
+
+select non empty
+filter
+( {[Customer].[City].[All].Children},
+[Customer].[City].CurrentMember.Name > “F”
+) on 1,
+[Measures].[Internet Sales Amount] on 0
+from [Adventure Works];
+
+-- Inne przyklady pracy z tekstem i wyszukiwania
+SELECT
+	NON EMPTY 
+		FILTER
+		( {[Customer].[City].[All].Children},left([Customer].[City].CurrentMember.Name,1) = 'F'
+		) on Columns,
+	[Measures].[Internet Sales Amount] On Rows
+FROM [Adventure Works];
+
+
+
+-- DODATKOWE FUNKCJE
+//mid([Customer].[City].CurrentMember.Name,2,1) 'A'
+//
+//
+//right([Customer].[City].CurrentMember.Name,1) = 'A'
+//
+//
+//left([Customer].[City].CurrentMember.Name,1) = 'O' and
+//right([Customer].[City].CurrentMember.Name,1) = 'A'
+
+
+-- SORTOWANIE  PO WLASCIWOSCIACH
+select non empty
+order
+( {[Customer].[City].[All].Children},
+[Customer].[City].CurrentMember.Name, DESC
+) on 1,
+[Measures].[Internet Sales Amount] on 0
+from [Adventure Works];
+
+
+

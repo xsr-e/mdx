@@ -1,0 +1,53 @@
+--	CWICZENIE ITEM, TOPCOUNT, EXISTING
+--	Przykad rozbudowany jako cwiczenie do wykonania
+--	Uzyj funkcji Item w celu zwrceni informacji o najlepiej sprzedawanych produktach 
+--	poprzez Internet ([Measures].[Internet Sales Amount]) dla okresu od 2001r do 2004r.
+--	nalezy zdefioniwac nowe measures: TPS - najlepiej sprzedawane produkty
+--	i TPN nazwy najlepiej sprzedawanych produktow
+--
+--	jak dziala:
+--	funkcja topcount zwraca najczesciej sprzedawany produkt w ciagu danego roku
+--	tworzac najpierw zestaw skladajacy sie z pojedynczej krotki.
+--	EXISTING wymusza przetwarzanie w kontekscie danego roku  a nie w kontekscie wszystkich lat
+--	w celu uzyskania nazwy produktu korzytsamy z Item wydobywajacego najpierw
+--	tuple z zestawu zwtracanego przez TopCount a nastepnie wydobywamy pierwszy element  ktory zawiera
+--	do hierarchi atrybotow Product, za pomoca Name zwracamy jego nazwe
+With
+Member [Measures].[TPS] As
+{	EXISTING
+	TopCount(
+			[Product].[Product].[Product].Members
+			,1
+			,([Measures].[Internet Sales Amount])
+			)*([Measures].[Internet Sales Amount])
+
+}.item(0),FORMAT_STRING="Currency"
+
+Member [Measures].[TPN] As 
+{	Existing
+	TopCount(
+			[Product].[Product].[Product].Members
+			,1
+			,([Measures].[Internet Sales Amount])	
+			)
+}.item(0).item(0).Name
+
+Select 
+{
+	([Measures].[Internet Sales Amount]),
+	([Measures].[TPS]),
+	[Measures].[TPN]
+} On Columns,
+{
+	([Date].[Calendar Year].[CY 2001]),
+	([Date].[Calendar Year].[CY 2002]),
+	([Date].[Calendar Year].[CY 2003]),
+	([Date].[Calendar Year].[CY 2004])
+	
+} On Rows
+From [Adventure Works];
+
+
+
+
+/*----------------------------------------------------------------------------*/

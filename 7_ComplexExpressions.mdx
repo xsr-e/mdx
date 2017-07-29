@@ -1,0 +1,213 @@
+--	Zlozone wyrazenia - PRZYKLADY
+
+--	Funkcja CurrentMember i wlasciwosci
+--	Zwraca biezacy element podczas interakcji na hierarchii
+--  pozwal rowniez na uzyskanie wlasciwosci member (member properties MDX)
+
+WITH MEMBER MEASURES.CU AS 
+[Product].[Product Categories].CURRENTMEMBER.PARENT_UNIQUE_NAME
+--[Product].[Product Categories].CURRENTMEMBER.NAME 
+--[Product].[Product Categories].CURRENTMEMBER.PARENT_COUNT
+--[Product].[Product Categories].CURRENTMEMBER.MEMBER_CAPTION
+--[Product].[Product Categories].CURRENTMEMBER.MEMBER_VALUE
+--[Product].[Product Categories].CURRENTMEMBER.UNIQUE_NAME
+--[Product].[Product Categories].CURRENTMEMBER.LEVEL_NUMBER
+SELECT 
+{MEASURES.CU}ON 0, 
+[Product].[Product Categories].[Category].MEMBERS ON 1 
+FROM [Adventure Works];
+
+--	Przyklad pokazujacy jak uzyskac informacje (wlasciwosc dla biezacego elemetu)
+--	np: nazwe rodzica w kontekscie ktorego wystepuje
+
+With
+Member [Measures].[ParentMemberName] As
+--	Nowe measures zwracajace wlasciwosc name dla kazdego elementu 
+--	w hierarchii na ktorym wykonywana jest interakcja
+--	przy uzyciu funkcji CURRENTMEMBER sprawdzajc nazwe w stosunku do rodzica
+[Product].[Product Categories].CURRENTMEMBER.PARENT.NAME
+Select 
+{([Measures].[ParentMemberName])} On Columns,
+{([Product].[Product Categories].ALLMEMBERS)} On Rows
+From [Adventure Works];
+
+--	CWICZENIE 1
+--	uzyskaj w raporcie nastepujace informacje:
+--	Nazwe rodzica dla member Parent.Name
+--	oraz PARENT_UNIQUE_NAME
+--	dla wszystkich sprzedawanych produktow
+/*                      
+				ParentMemberName	ParentMemberUniqueName
+All Products	(null)				(null)
+Accessories		All Products		[Product].[Product Categories].[All Products]
+Bike Racks		Accessories			[Product].[Product Categories].[Category].&[4]
+...
+*/
+WITH
+MEMBER [Measures].[ParentMemberName] as
+   [Product].[Product Categories].CurrentMember.Parent.Name
+MEMBER [Measures].[ParentMemberUniqueName] as
+   [Product].[Product Categories].CurrentMember.PARENT_UNIQUE_NAME
+SELECT
+   {
+      ([Measures].[ParentMemberName]),([Measures].[ParentMemberUniqueName])
+   } ON COLUMNS,
+   {[Product].[Product Categories].AllMembers} ON ROWS
+FROM [Adventure Works];
+
+
+
+
+
+/*---------------------------------------------------------------------------*/
+--	Przyklad zlozonego wyrazenia 
+--	wykorzystujacego funkcje inline IIF i PROPERTIES
+--	IIf(Logical_Expression, Expression1, Expression2)
+--	funkcji tej mozemy uzyc w celu sprawdzenia logicznego warunku 
+--	jezeli wyrazenie logiczne zwraca true wykonywane jest wyrazenie pierwsze,
+--	gdy zwraca false wykonywane jest wyrazenie drugie
+
+
+With
+Member [Measures].[ABC] As
+[Product].[Product].Properties( "Color" )	
+Select 
+{[Measures].[ABC]} On Columns,
+Non Empty {([Product].[Product Categories].ALLMEMBERS)} On Rows
+From [Adventure Works]
+WHERE [Geography].[Country].&[United States];
+
+
+With
+Member [Measures].[ParentMemberName] As
+IIF (
+		[Product].[Product Categories].CURRENTMEMBER.PROPERTIES ("Level_number", typed)=0,
+		--	gdzie: Properties(Property_Name [, TYPED])
+		--	PARENT_LEVEL to:
+		-- odleglosc elementow od root level, ktore wynosi 0
+		 "ROOT",
+		 [Product].[Product Categories].CURRENTMEMBER.Parent.Name
+	)
+
+Select 
+{([Measures].[ParentMemberName])} On Columns,
+{([Product].[Product Categories].ALLMEMBERS)} On Rows
+From [Adventure Works];
+
+
+
+--	CWICZENIE 1
+--	Utworz raport prezentujacy informacje opisujaca 
+--	sprzedaz Internet Sales Amount, powyzej lub ponizej zalozonego 
+--	kryterium o wartosci 7000000, w roku fiskalnym 2002
+--	Jezeli wartosc jest powyzej kryterium oznacz ja etykieta HIGH, ponizej wartosci
+--	oznacz etykieta LOW.
+
+/*	     Internet Sales Amount	HighOrLow
+FY 2002	 $7,072,084.24			High
+FY 2003  $5,762,134.30			Low
+FY 2004	 $16,473,618.05			High
+FY 2005  $50,840.63				Low
+FY 2007 (null)					Low
+*/
+
+WITH MEMBER MEASURES.HighOrLow AS 
+IIF([Measures].[Internet Sales Amount]>7000000, "High", "Low") 
+
+SELECT {[Measures].[Internet Sales Amount],MEASURES.HighOrLow} ON Columns, 
+[Date].[Fiscal].[Fiscal Year].MEMBERS ON Rows
+FROM [Adventure Works]; 
+
+
+--	CWICZENIE 2
+--	Utworz raport prezentujacy sprzedane produkty w poszczegolnych
+--	kategoriach dla Reseller Sales Amount
+--	pokazujac dodatkowo nazwe rodzica dla danego member oraz % udzial 
+--	w sprzedazy danego member w stosunku do rodzica
+
+
+/*
+                        Parent Member Name  Reseller Sales Amount  Percent of Parent
+All Products                   Do Not Show         $80,450,596.98        Do Not Show
+Accessories                   All Products            $571,297.93              0.71%
+Bike Racks                     Accessories            $197,736.16             34.61%
+Hitch Rack - 4-Bike             Bike Racks            $197,736.16            100.00%
+Bike Stands                    Accessories                 (null)             (null)
+All-Purpose Bike Stand         Bike Stands                 (null)             (null)
+Bottles and Cages              Accessories              $7,476.60              1.31%
+Mountain Bottle Cage     Bottles and Cages                 (null)             (null)
+Road Bottle Cage         Bottles and Cages                 (null)             (null)
+Water Bottle - 30 oz.    Bottles and Cages              $7,476.60            100.00%
+ ....
+*/
+
+WITH
+MEMBER [Measures].[Parent Member Name] as
+   IIF(
+      [Product].[Product Categories].CurrentMember.Properties("Level_Number",TYPED)=0,
+      "Do Not Show", 
+      [Product].[Product Categories].CurrentMember.Parent.Name
+      )
+MEMBER [Measures].[Percent of Parent] as
+   IIF(
+      [Product].[Product Categories].CurrentMember.Properties("Level_Number",TYPED)=0,
+      "Do Not Show",
+      ([Measures].[Reseller Sales Amount])/
+         ([Product].[Product Categories].CurrentMember.Parent, [Measures].[Reseller Sales Amount])
+      )
+   ,FORMAT_STRING="Percent"
+SELECT
+   {
+      ([Measures].[Parent Member Name]),
+      ([Measures].[Reseller Sales Amount]),
+      ([Measures].[Percent of Parent])
+   } ON COLUMNS,
+   {[Product].[Product Categories].AllMembers} ON ROWS
+FROM [Adventure Works];
+
+
+/*----------------------------------------------------------------------------*/
+--	Korzystanie z sets w wyrazeniach
+--	nalezy pamietac ze w przypadku zestawu nie jest brany 
+--	aktualny kontekst dlatego nalezy swiadomie uzywac
+--	funkcji EXISTING 
+--	omowic rowniez przy okazji funkcje count()
+
+With
+Member [Measures].[NumberOfProduct] As
+	Count (
+		   [Product].[Product].[Product].Members
+		   )
+Select
+		{
+		([Measures].[Reseller Sales Amount]),
+		([Measures].[NumberOfProduct])
+		} On Columns,
+		{[Product].[Category].Members} On Rows
+From [Adventure Works];
+
+--	Przyklad powyzszy uwzgledniajacy wlasciwy kontekst dla nowego measure
+--	Polecenie EXISTING wymusza uzycie biezacego kontekstu w trakcie wyliczania wartosci elementu
+
+With
+Member [Measures].[NumberOfProduct] As
+	Count (
+		  EXISTING [Product].[Product].[Product].Members
+		   )
+Select
+		{
+		([Measures].[Reseller Sales Amount]),
+		([Measures].[NumberOfProduct])
+		} On Columns,
+		{[Product].[Category].Members} On Rows
+From [Adventure Works];
+
+
+
+
+
+ 
+
+
+
+

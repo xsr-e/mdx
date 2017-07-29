@@ -1,0 +1,366 @@
+-- Funkcje agregacji
+--	Uzycie operatora (+) nie powoduje wykonania w takim przypadku agregacji
+--	taki sam wynik uzyskalibysmy tworzac z calego topcount {} rezygnujac z operatora +
+--	operator + w tym przypadku nie sumuje tylko dodaje/dokleja dodatkowy wiersz w wyniku
+--	jest to sposob na dodanie dodatkowej agregacji do wyniku
+
+Select
+{[Measures].[Reseller Sales Amount]} On Columns,
+TopCount(
+{[Product].[Subcategory].[Subcategory].members}
+,5
+,([Measures].[Reseller Sales Amount]))
++
+{[Product].[Subcategory].[All Products]} On Rows
+From [Adventure Works];
+
+
+--	Jezeli chcemy w wyniku miec sume 5 zwracanych wartosci
+--	nalezy dodac dodatkowy Member wyliczajacy nowa wartosc
+With
+Member [Product].[subcategory].[Top5] As
+	Sum(
+		TopCount([Product].[Subcategory].[Subcategory].members,
+		5,([Measures].[Reseller Sales Amount])
+	   ),[Measures].CURRENTMEMBER)
+Select
+	{[Measures].[Reseller Sales Amount]}On Columns,
+	TopCount(
+				{[Product].[Subcategory].[Subcategory].members}
+				,5
+				,([Measures].[Reseller Sales Amount])
+			)
+			+
+			{[Product].[Subcategory].[All Products],
+			 [Product].[subcategory].[Top5]} On Rows
+From [Adventure Works];
+
+-- CWICZENIE 1
+-- Utworz raport reprezentuajcy laczna sprzedaz produktow dla Reseller Sales Amount
+-- dla regionu NorthAmerica obejmujacego Canada i United States
+/*
+				NorthAmerica
+All Products	$67,985,726.81
+Accessories		$421,642.58
+Bikes			$56,469,132.32
+Clothing		$1,416,384.58
+Components		$9,678,567.33
+*/
+WITH MEMBER Measures.NorthAmerica AS SUM 
+      (
+       {[Geography].[Country].&[Canada], [Geography].[Country].&[United States]}
+       ,[Measures].[Reseller Sales Amount]
+      )
+SELECT {[Measures].[NorthAmerica]} ON 0,
+[Product].[Category].members ON 1
+FROM [Adventure Works];
+
+
+
+
+
+
+--	Porownanie Aggregate i Sum przyklad 1
+--	Z funkcji SUM korzytamy gdy wymagana jest suma
+--	z funkcji Aggregate korzystamy gdy wymagana jest operacja na juz agregatach a nie na wartosciach z ktorych pochodzi
+
+With
+Member [Product].[subcategory].[S1] As
+1
+Member [Product].[subcategory].[S2] As
+null
+Member [Product].[subcategory].[S3] As
+2
+Member [Product].[subcategory].[AGGREGATE] As
+Aggregate( {[Product].[subcategory].[S3],[Product].[subcategory].[S2],[Product].[subcategory].[S1]})
+Member [Product].[subcategory].[SUM] As
+Sum({[Product].[subcategory].[S3],[Product].[subcategory].[S2],[Product].[subcategory].[S1]})
+
+Select
+	{
+//	 [Product].[subcategory].[S1],
+//	 [Product].[subcategory].[S2],
+//	 [Product].[subcategory].[S3],
+	 [Product].[subcategory].[AGGREGATE],
+	 [Product].[subcategory].[SUM]}
+	 On Columns
+From [Adventure Works];
+
+-- Porownanie Aggregate i SUM przyklad 2
+-- [Measures].[Customer Count] to wartosc uzyskana za pomca DistinctCount na CustomerKey
+-- w Internet Sales Facts
+
+With
+Member [Customer].[Customer Geography].[Aggregate] As
+Aggregate({[Customer].[Customer Geography].members},[Measures].[Customer Count])
+
+Member [Customer].[Customer Geography].[Sum] As
+Sum({[Customer].[Customer Geography].members},[Measures].[Customer Count])
+
+Select
+	{
+     [Customer].[Customer Geography].[Aggregate],
+     [Customer].[Customer Geography].[Sum]
+     }
+	 On Columns
+From [Adventure Works];
+
+-- do pokazania ilosci customer to co zwraca Aggregate
+WITH MEMBER measures.X AS
+[Customer].[Customer Geography].[Customer].members.count
+Select measures.X on 0
+From [Adventure Works];
+
+
+--	CWICZENIE 1
+--	Utworz raport reprezentujacy ilosc sprzedanych produktow 
+--	w poszczegolnych kategoriach w oparciu o Order Count w Sales Orders
+--	dla okresu od 20010701 do 20040731 (dla pelnego zakresu czasu zarejstrowanego w bazie)
+--	korzytsajac z funkcji Sum() lub Aggregate()
+
+
+/*			ALL
+Accessories	19,523
+Bikes		18,358
+Clothing	9,871
+Components	2,646
+*/
+-- Rozwiazanie z Aggregate()
+WITH MEMBER [Date].[Calendar].[ALL] As
+Aggregate({[Date].[Calendar].members},[Measures].[Order Count])
+Select 
+{[Date].[Calendar].[ALL]} On Columns,
+{[Product].[Product Categories].[Category]}On Rows
+From [Adventure Works];
+
+-- Rozwiazanie z Sum()
+WITH MEMBER [Date].[Calendar].[ALL] As
+Sum({[Date].[Calendar].[Date].&[20010701]
+:[Date].[Calendar].[Date].&[20040731]},[Measures].[Order Count])
+Select 
+{[Date].[Calendar].[ALL]} On Columns,
+{[Product].[Product Categories].[Category]}On Rows
+From [Adventure Works];
+
+
+
+-- Funkcja AVG()
+
+WITH MEMBER [Date].[Calendar].[ALL] As
+Avg({[Date].[Calendar].[Date].&[20010701]
+:[Date].[Calendar].[Date].&[20040731]},[Measures].[Order Count])
+Select 
+{[Date].[Calendar].[ALL]} On Columns,
+{[Product].[Product Categories].[Category]}On Rows
+From [Adventure Works];
+
+
+WITH 
+MEMBER [Date].[Calendar].[AVG] AS
+    Avg({
+         [Date].[Calendar].[Month].[January 2003]
+         :
+         [Date].[Calendar].[Month].[December 2003]
+          },
+        [Measures].CurrentMember
+        )
+SELECT
+    {([Measures].[Reseller Sales Amount])} ON COLUMNS,
+    {[Date].[Calendar].[Month].[January 2003]
+     :
+     [Date].[Calendar].[Month].[December 2003]
+    }+
+    {[Date].[Calendar].[AVG]}ON ROWS
+FROM [Adventure Works];
+
+ --	CWICZENIE 2
+ --	Utworz raport prezentujacy srednia dla Reseller Sales Amount,
+ --	dla okresu czasu od Q1 CY 2003 do Q4 CY 2003 i 
+ --	srednia dla okresu czasu od January 2003 do December 2003
+ --	uzyskany wynik posortuj wg hierarchi czasu.
+ /*
+                                      Reseller Sales Amount
+CY2003MonthlyAvgResellerSales		          $2,683,555.79
+CY2003QuarterlyAvgResellerSales		          $8,050,667.36
+Q1 CY 2003                                    $5,266,343.51
+January 2003                                  $1,317,541.83
+February 2003                                 $2,384,846.59
+March 2003                                    $1,563,955.08
+Q2 CY 2003                                    $6,733,903.82
+April 2003                                    $1,865,278.43
+May 2003                                      $2,880,752.68
+June 2003                                     $1,987,872.71
+Q3 CY 2003                                   $10,926,196.09
+July 2003 
+.
+*/
+   
+ WITH 
+MEMBER [Date].[Calendar].[CY2003QuarterlyAvgResellerSales] AS
+    Avg(
+        {  [Date].[Calendar].[Calendar Quarter].[Q1 CY 2003]:
+           [Date].[Calendar].[Calendar Quarter].[Q4 CY 2003]},
+        [Measures].CurrentMember
+        )
+MEMBER [Date].[Calendar].[CY2003MonthlyAvgResellerSales] AS
+    Avg(
+        {   [Date].[Calendar].[Month].[January 2003]:
+            [Date].[Calendar].[Month].[December 2003]
+            }, [Measures].CurrentMember
+        )
+SELECT
+    {([Measures].[Reseller Sales Amount])} ON COLUMNS,
+    {   ([Date].[Calendar].[CY2003MonthlyAvgResellerSales]),
+        ([Date].[Calendar].[CY2003QuarterlyAvgResellerSales])
+        } +
+    Hierarchize(
+        {   [Date].[Calendar].[Month].[January 2003]:
+            [Date].[Calendar].[Month].[December 2003]
+            } +
+        {   [Date].[Calendar].[Calendar Quarter].[Q1 CY 2003]:
+            [Date].[Calendar].[Calendar Quarter].[Q4 CY 2003]
+            }
+        ) ON ROWS
+FROM [Adventure Works];
+--	Cwiczenie 2
+
+
+/*
+          Reseller Sales Amount    Reseller Order Count        MonthlyAvgResellerSalesAmount
+CY 2001           $8,065,435.31    366						   $1,344,239.22
+CY 2002          $24,144,429.65    1,015				       $2,012,035.80
+CY 2003          $32,202,669.43    1,521				       $2,683,555.79
+CY 2004          $16,038,062.60    894					       $2,673,010.43
+*/
+WITH
+//MEMBER [Measures].[Average Reseller Sales Amount] AS
+//    ([Measures].[Reseller Sales Amount]) / ([Measures].[Reseller Order Count])
+//    ,FORMAT_STRING="Currency"
+
+MEMBER [Measures].[MonthlyAvgResellerSalesAmount] AS
+    Avg(
+        EXISTING [Date].[Calendar].[Month].Members,
+        [Measures].[Reseller Sales Amount]
+        )
+SELECT
+    {
+        ([Measures].[Reseller Sales Amount]),
+        ([Measures].[Reseller Order Count]),
+//        [Measures].[Average Reseller Sales Amount],
+        ([Measures].[MonthlyAvgResellerSalesAmount])
+        } ON COLUMNS,
+    {
+        [Date].[Calendar Year].[CY 2001]:
+        [Date].[Calendar Year].[CY 2004]
+        } ON ROWS
+FROM [Adventure Works];
+
+--	COUNT
+-- Policz wszystkie produkty w danej kategorii
+With
+Member [Measures].[HowMany] As 
+Count(Existing{[Product].[Product].[Product].members})
+Select 
+{[Measures].[Reseller Sales Amount],[Measures].[HowMany]} On Columns,
+{[Product].[Category].members} On Rows
+From [Adventure Works];
+
+--	Cwiczenie 4
+--	Utworz raport prezentujacy ilosc klientow w 
+--	poszczegolnych krajach
+
+/*
+				HowManyCustomer
+Australia		3592
+Canada			1572
+France			1811
+Germany			1781
+United Kingdom	1914
+United States	7820
+All Customers	18485
+*/
+
+With
+Member [Measures].[HowManyCustomer] As 
+Count(Existing{[Customer].[Customer].members})
+Select 
+{[Measures].[HowManyCustomer]} On Columns,
+{[Customer].[Customer Geography].[Country].Members}
++
+{[Customer].[Customer Geography].[All Customers]}
+ On Rows
+From [Adventure Works];
+
+
+--	Min() i Max()
+-- zwrocic uwage na kontekst measure (jezei nie wskazemy wlasciwego i operamy sie o domyslny
+--	to operacje jest na default a nie na tym o ktorym myslimy)
+With
+Member [Product].[subcategory].[S1] As
+1
+Member [Product].[subcategory].[S2] As
+null
+Member [Product].[subcategory].[S3] As
+2
+Member [Product].[subcategory].[max] As 
+Max ({[Product].[subcategory].[S3],[Product].[subcategory].[S2],[Product].[subcategory].[S1]})
+
+Member [Product].[subcategory].[Min] As 
+Min ({[Product].[subcategory].[S3],[Product].[subcategory].[S2],[Product].[subcategory].[S1]})
+
+Select
+	{[Product].[subcategory].[max],
+	[Product].[subcategory].[min] }
+	 On Columns
+From [Adventure Works];
+
+
+
+
+WITH
+MEMBER [Measures].[PercentofMax] AS
+    ([Measures].[Reseller Sales Amount]) /
+        ([Measures].[MaxSalesBySubcategory])
+    ,FORMAT_STRING="Percent"
+MEMBER [Measures].[MaxSalesBySubcategory] AS
+    Max(
+        {[Product].[Subcategory].[Subcategory].Members},
+        ([Measures].[Reseller Sales Amount])
+        )
+SELECT
+    {
+        ([Measures].[Reseller Sales Amount]),
+        ([Measures].[PercentofMax])
+        } ON COLUMNS,
+    {[Product].[Subcategory].[Subcategory].Members} ON ROWS
+FROM [Adventure Works];
+
+--	Cwiczenie 5
+--	Pokaz wartosc MAX i MIN dla Internet Sales Amount z setu prezentujacego sprzedaz 
+--	w poszczegolnych Category dla produktow dla
+--	wszystkich Country w Sales Territory
+
+With Member [Sales Territory].[Sales Territory].[MaxSale] AS
+Max(
+	{[Sales Territory].[Sales Territory].[Country].members},[Measures].[Internet Sales Amount]
+	)
+	
+Member	[Sales Territory].[Sales Territory].[MinSale] AS
+Min(
+	{[Sales Territory].[Sales Territory].[Country].members},[Measures].[Internet Sales Amount]
+	)
+Select 
+{[Sales Territory].[Sales Territory].[Country].members,
+[Sales Territory].[Sales Territory].[MaxSale],
+[Sales Territory].[Sales Territory].[MinSale]} On Columns,
+Non Empty{[Product].[Product Categories].[Category].members} On Rows
+From [Adventure Works]
+Where [Measures].[Internet Sales Amount];
+
+
+
+
+
+
+
+

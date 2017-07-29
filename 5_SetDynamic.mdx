@@ -1,0 +1,550 @@
+--	Dynamiczne tworzenie zestawow (sets), jest mozliwe w oparciu o dostepne funkcje
+--	ich przeznaczniem jest wyeliminowanie w instrukcji powtorzen 
+--	podczas wymieniania w zestawie wszystkich wystapien
+--	elementow w tej samej przestrzeni.
+
+-- FUNKCJA MEMBERS
+--	1
+Select 
+{
+([Date].[Calendar].[CY 2002]),
+([Date].[Calendar].[CY 2003]),
+([Date].[Calendar].[CY 2004])
+} On Columns,
+{
+ --	powtorzenia dla wszystkich kategorii produktow
+ --	pytanie czy mozna to uproscic?
+
+([Product].[Category].[Accessories]),
+([Product].[Category].[Bikes]),
+([Product].[Category].[Clothing]),
+([Product].[Category].[Components])
+} On Rows
+From [Adventure Works];
+
+--	2 Funkcja MEMBERS
+--	wykonac przyklady z komentarza
+
+Select 
+{
+([Date].[Calendar].[CY 2002]),
+([Date].[Calendar].[CY 2003]),
+([Date].[Calendar].[CY 2004])
+} On Columns,
+{
+ --	brak powtorzen
+ --	i odpowiedz na pytanie
+--([Product].[Category].Members) --Lacznie z ALL ...
+([Product].[Category].[Category].Members) --z wskazanego poziomu
+} On Rows
+From [Adventure Works];
+
+--	3
+--	Kolejnosc zwracania danych do zestawu wynikowego
+--	uzalezniona od ich wystepowania w hierarchii
+--	wykonac zakomentowane przyklady
+
+Select 
+{
+([Date].[Calendar].[CY 2002]),
+([Date].[Calendar].[CY 2003]),
+([Date].[Calendar].[CY 2004])
+} On Columns,
+{
+  ([Product].[Category].[Category].Members) -- Przypadek zwracania z okreslonego poziomu
+  --([Product].[Product Categories].Members) --Przypadek zwracania z poziomu wyzszego w hierarchii
+} On Rows
+From [Adventure Works];
+
+--	CWICZENIE 1
+--	Korzystajac z funkcji members zwroc domyslna agregacje dla
+--	wszystkich regionow w Sales Territory oraz wszystkie Product Line w Product Model Lines
+--	uzyskujac nastepujacy wynik:
+/*
+         	Central	Northeast	Northwest	    Southeast	   Southwest      Accessory	$159,511.22	        $181,546.47     $177,102.13	   $162,841.79	$396,924.68
+Components	$23,247.29	        $37,488.47	    $99,138.35	   $19,039.21	  $118,956.94
+Mountain	$3,416,858.30	    $1,977,038.66	$6,993,303.38  $3,787,498.44  $6,822,951.11
+Road	    $3,845,821.23	    $4,192,823.36	$2,975,762.16  $3,270,797.70  $9,316,512.26
+Touring  	$460,570.13	        $543,945.06	    $2,189,769.97  $627,239.08	  $1,811,113.81
+
+*/
+Select 
+{
+[Sales Territory].[Sales Territory].[Region].[Central],
+[Sales Territory].[Sales Territory].[Region].[Northeast],
+[Sales Territory].[Sales Territory].[Region].[Northwest],
+[Sales Territory].[Sales Territory].[Region].[Southeast],
+[Sales Territory].[Sales Territory].[Region].[Southwest]
+} On Columns,
+{
+[Product].[Product Model Lines].[Product Line].&[S],
+[Product].[Product Model Lines].[Product Line].&[],
+[Product].[Product Model Lines].[Product Line].&[M],
+[Product].[Product Model Lines].[Product Line].&[R],
+[Product].[Product Model Lines].[Product Line].&[T]
+} On Rows
+From [Adventure Works];
+
+--	Rozwiazanie:
+Select 
+{
+[Sales Territory].[Sales Territory].[Region].Members
+} On Columns,
+{
+[Product].[Product Model Lines].[Product Line].Members
+} On Rows
+From [Adventure Works];
+
+
+--	CWICZENIE 2
+--	Korzystajac z funkcji members zwroc domyslna agregacje dla
+--	wszystkich zarejstrowanych w Calendar faktow dotyczacych sprzedazy zwiazanych  z
+--	measure Internet Sales Amount
+--	uzyskujac nastepujacy wynik:
+
+/*
+        	   Internet Sales Amount
+All Periods	   $29,358,677.22
+CY 2001	       $3,266,373.66
+H2 CY 2001	   $3,266,373.66
+Q3 CY 2001	   $1,453,522.89
+July 2001	   $473,388.16
+July 1, 2001   $14,477.34
+July 2, 2001   $13,931.52
+.
+.
+itp.
+*/
+
+Select 
+{[Measures].[Internet Sales Amount]} On Columns,
+{[Date].[Calendar].Members} On Rows
+From [Adventure Works];
+
+
+--	CWICZENIE 3
+--	Korzystajac z funkcji members zwroc wszystkie Measures 
+--	dla wszystkich Product Category
+--	uzyskujac nastepujacy wynik:
+/*
+			Internet Sales Amount	Internet Order Quantity	 Internet Extended Amount ...End of Day Rate
+Accessories	$700,759.96	            36,092	                 $700,759.96	          ...
+Bikes	    $28,318,144.65	        15,205	                 $28,318,144.65	          ...
+Clothing	$339,772.61	            9,101	                 $339,772.61              ...	
+Components	(null)                  (null)	                 (null)	
+
+*/
+
+Select 
+{[Measures].Members} On Columns,
+{[Product].[Product Categories].[Category]} On Rows
+From [Adventure Works];
+
+/*----------------------------------------------------------------------------------------*/
+--	4 Funkcja MeasureGroupMeasures
+--	Pozwala na zwrocenie measures z wskazanego Measure (lub MEASUERS mozna wskazac kilka rozdzilajac przecinkiem)
+--  z wyjatkiem wartosci wyliczeniowych (z kalkulatorkiem)
+--	wykonac przyklady z komentarza
+
+Select 
+{
+([Product].[Category].Members)
+} On Columns,
+{
+  MEASUREGROUPMEASURES ("Reseller SAles") -- Wszystkie wartosci mierzalne z ..
+  --MEASUREGROUPMEASURES ("Reseller Orders") -- Wszystkie wartosci mierzalne z...
+  
+ -- MEASUREGROUPMEASURES ("Discount Amount") -- Taki zapis nie dziala albo wszystkie albo ...
+} On Rows
+From [Adventure Works];
+
+
+--	CWICZENIE 3
+--	Korzystajac z funkcji MEASUREGROUPMEASURES zwroc wszystkie Measures 
+--	z Reseller Orders i Reseller Sales
+
+
+Select 
+{
+([Product].[Category].Members)
+} On Columns,
+{
+MEASUREGROUPMEASURES ("Reseller Orders"), -- Wszystkie wartosci mierzalne z...
+MEASUREGROUPMEASURES ("Reseller Sales") -- Taki zapis nie dziala albo wszystkie albo ...
+} On Rows
+From [Adventure Works];
+
+
+/*----------------------------------------------------------------------------------------*/
+--	4 Funkcja CrossJoin lub *
+--	Pozwala nam na pokazanie wartoci dla wszystkich moliwych kombinacji
+--	w zestawie wynikowym w wyniku polaczenia 
+--	elementow z wartosciami mierzalnymi. (iloczyn members x measure)
+
+
+Select 
+{
+([Date].[Calendar].[CY 2002]),
+([Date].[Calendar].[CY 2003]),
+([Date].[Calendar].[CY 2004])
+} On Columns,
+CROSSJOIN 
+(
+	{ [Product].[Category].[Category].Members},
+	{
+	 ([Measures].[Reseller Sales Amount])
+	 -- ,([Measures].[Internet Sales Amount])
+	} 
+)On Rows
+From [Adventure Works];
+
+-- 5 Operator *
+-- 
+
+Select 
+{
+([Date].[Calendar].[CY 2002]),
+([Date].[Calendar].[CY 2003]),
+([Date].[Calendar].[CY 2004])
+} On Columns,
+
+
+	{ [Product].[Category].[Category].Members}*
+	{
+	 [Measures].[Reseller Sales Amount]
+	} 
+On Rows
+From [Adventure Works];
+
+--	CWICZENIE 1
+--	Korzystajac z funkcji CROSSJOIN lub operatora * zwroc wynik przezentujacy sprzeda wszystki 
+--	Category dla kombinacje 
+--	measures:  Reseller Sales Amount i Internet Sales Amount
+--	i Calendar Year: 2002, 2003, 3004
+--	ograniczajac wynik tylko do agregacji dla [Geography].[Country].[United States]
+/*
+				CY 2002					CY 2002					CY 2003					CY 2003					CY 2004					CY 2004
+				Reseller Sales Amount	Internet Sales Amount	Reseller Sales Amount	Internet Sales Amount	Reseller Sales Amount	Internet Sales Amount
+Accessories		$61,263.90				(null)					$151,136.35				$293,709.71				$76,027.18				$407,050.25
+Bikes			$14,716,804.14			$6,530,343.53			$16,139,984.68			$9,359,102.62			$7,951,335.55			$9,162,324.85
+Clothing		$317,939.41				(null)					$495,443.62				$138,247.97				$197,590.92				$201,524.64
+Components		$2,526,542.06			(null)					$3,284,551.84			(null)					$1,137,105.72			(null)
+
+*/
+
+
+SELECT
+   {
+      ([Date].[Calendar].[CY 2002]),
+      ([Date].[Calendar].[CY 2003]),
+      ([Date].[Calendar].[CY 2004])
+   } * 
+   {
+      ([Measures].[Reseller Sales Amount]),
+      ([Measures].[Internet Sales Amount])
+   }
+   ON COLUMNS,
+   {[Product].[Category].[Category].Members}
+   ON ROWS
+FROM [Adventure Works]
+WHERE [Geography].[Country].[United States];
+
+--	CWICZENIE 2
+--	Korzystajac z funkcji CROSSJOIN lub operatora * zwroc wynik przezentujacy
+--	sprzeda w poszczegonych latach dla Reseller Sales Amount i Internet Sales Amount
+--	produktow z poszczegolnych kategorii.
+--	Wynik ograniczyc do wartoci z [Geography].[Country].[United States]
+
+/*
+                                               CY 2002                CY 2002                CY 2003                CY 2003                CY 2004                CY 2004
+                                 Reseller Sales Amount  Internet Sales Amount  Reseller Sales Amount  Internet Sales Amount  Reseller Sales Amount  Internet Sales Amount
+Accessories  Bike Racks                         (null)                 (null)             $57,382.62             $16,440.00             $36,937.90             $22,920.00
+Accessories  Bike Stands                        (null)                 (null)                 (null)             $18,921.00                 (null)             $20,670.00
+Accessories  Bottles and Cages                  (null)                 (null)              $2,186.60             $23,280.27              $1,554.90             $33,517.92
+Accessories  Cleaners                           (null)                 (null)              $3,379.09              $3,044.85              $2,232.34              $4,173.75
+Accessories  Fenders                            (null)                 (null)                 (null)             $19,408.34                 (null)             $27,211.24
+Accessories  Helmets                        $49,586.49                 (null)             $61,131.18             $92,583.54             $24,542.87            $132,752.06
+Accessories  Hydration Packs                    (null)                 (null)             $19,561.85             $16,771.95             $10,639.64             $23,535.72
+Accessories  Lights                             (null)                 (null)                 (null)                 (null)                 (null)                 (null)
+Accessories  Locks                           $6,339.46                 (null)              $3,890.52                 (null)                 (null)                 (null)
+Accessories  Panniers                           (null)                 (null)                 (null)                 (null)                 (null)                 (null)
+Accessories  Pumps                           $5,337.95                 (null)              $3,262.37                 (null)                 (null)                 (null)
+Accessories  Tires and Tubes                    (null)                 (null)                $342.13            $103,259.76                $119.54            $142,269.56
+Bikes        Mountain Bikes              $6,970,418.73          $1,562,456.76          $5,832,626.02          $3,989,638.48          $2,539,198.92          $3,814,691.06
+Bikes        Road Bikes                  $7,746,385.41          $4,967,886.77          $7,838,944.52          $3,952,029.21          $3,042,999.81          $2,920,267.67
+Bikes        Touring Bikes                      (null)                 (null)          $2,468,414.14          $1,417,434.93          $2,369,136.82          $2,427,366.12
+*/
+
+
+SELECT
+   {
+      ([Date].[Calendar].[CY 2002]),
+      ([Date].[Calendar].[CY 2003]),
+      ([Date].[Calendar].[CY 2004])
+   }* 
+   {
+      ([Measures].[Reseller Sales Amount]),
+      ([Measures].[Internet Sales Amount])
+   }
+   ON COLUMNS,
+   {[Product].[Category].[Category].Members}
+      * {[Product].[Subcategory].[Subcategory].Members}
+   ON ROWS
+FROM [Adventure Works]
+WHERE [Geography].[Country].[United States]
+;
+
+--	CWICZENIE 3 (Opcjonalnie)
+--	Wynik ograniczyc do wartosci z [Geography].[Country].[United States] i [Product].[Subcategory].[Mountain Bikes]
+
+/*                           CY 2002                CY 2002                CY 2003                CY 2003                CY 2004               CY 2004
+               Reseller Sales Amount  Internet Sales Amount  Reseller Sales Amount  Internet Sales Amount  Reseller Sales Amount  Internet Sales Amount
+Bikes  Black           $3,927,415.56            $842,059.40          $3,265,300.39          $1,962,003.53          $1,265,049.27          $1,775,241.11
+Bikes  Silver          $3,043,003.18            $720,397.36          $2,567,325.63          $2,027,634.94          $1,274,149.65          $2,039,449.95
+*/
+
+SELECT
+   {
+      ([Date].[Calendar].[CY 2002]),
+      ([Date].[Calendar].[CY 2003]),
+      ([Date].[Calendar].[CY 2004])
+   } *
+   {
+      ([Measures].[Reseller Sales Amount]),
+      ([Measures].[Internet Sales Amount])
+      }
+   ON COLUMNS,
+   {[Product].[Category].[Category].Members}
+      * {[Product].[Color].[Color].Members}
+   ON ROWS
+FROM [Adventure Works]
+WHERE ([Geography].[Country].[United States], [Product].[Subcategory].[Mountain Bikes]);
+/*----------------------------------------------------------------------------------------*/
+
+
+-- 6 AUTO EXIST
+--  Domyslny mechanizm dzialajacy dla CrossJoin pod warunkiem 
+--	ze zestaw zawiera elementy z tego samego wymiaru
+--	w wyniku czego zwracane wartosci do zestawu wynikowego 
+--	skladaja sie z aktualnie widocznych w wymiarze
+--	pozostale nie sa wyswietlane dla operacji Cross-joined
+--	Przyklad przezentuje to dla ROWS powinien byc iloczyn 4x37=148
+--	po przeaczeniu sie na zakladke Messages jest liczba 39 - 2 naglowki kolumn co daje 37 wierszy w wyniku.
+--	Z relacji pomiedzy Subcxategory i Category wynika ze jest to relacje 1 do 1
+--	co oznacza ze maksymalna liczba kobinacji wynosi 37.
+--	
+Select 
+{
+ ([Date].[Calendar].[CY 2002]),
+ ([Date].[Calendar].[CY 2003]),
+ ([Date].[Calendar].[CY 2004])
+}
+ *
+{
+ ([Measures].[Reseller Sales Amount])
+}  On Columns,
+{
+ [Product].[Category].[Category].Members 
+}
+ on Rows
+From [Adventure Works];
+
+
+Select 
+{
+ ([Date].[Calendar].[CY 2002]),
+ ([Date].[Calendar].[CY 2003]),
+ ([Date].[Calendar].[CY 2004])
+}
+ *
+{
+ ([Measures].[Reseller Sales Amount]),
+ ([Measures].[Internet Sales Amount])
+}  On Columns,
+{
+ [Product].[Category].[Category].Members 
+}
+*
+{
+ [Product].[Subcategory].[Subcategory].Members
+} on Rows
+From [Adventure Works];
+
+--	6a AUTO EXIST
+--	4x 10 a zwraca tylko 23
+
+Select 
+{ ([Date].[Calendar].[CY 2002]),([Date].[Calendar].[CY 2003]),([Date].[Calendar].[CY 2004])}
+ *
+{ ([Measures].[Reseller Sales Amount]),
+ ([Measures].[Internet Sales Amount])}  On Columns,
+{ [Product].[Category].[Category].Members }
+*
+{ [Product].[Color].[Color].Members --zwrocic uwage ze nie widac w metadanych!!!
+} on Rows
+From [Adventure Works];
+
+--	7
+--
+Select 
+{ ([Date].[Calendar Year].[Calendar Year].members)}
+ *
+{([Date].[Calendar Quarter of Year].[Calendar Quarter of Year].members)}  On Columns
+From [Adventure Works];
+
+//Select 
+//{ ([Date].[Calendar Year].[Calendar Year].members)} On Columns,
+//{([Date].[Calendar Quarter of Year].[Calendar Quarter of Year].members)}  On Rows
+//From [Adventure Works];
+/*
+       	CY 2001	          CY 2002	     CY 2003	     CY 2004	  CY 2006
+CY Q1	(null)	        $4,069,186.04	$5,266,343.51	$7,102,685.11	(null)
+CY Q2	(null)      	$4,153,820.42	$6,733,903.82	$8,935,377.49	(null)
+CY Q3	$3,193,633.97	$8,880,239.44	$10,926,196.09	(null)	        (null)
+CY Q4	$4,871,801.34	$7,041,183.75	$9,276,226.01	(null)      	(null)
+*/
+
+--	8
+-- AUTO EXIST z roznych wymiarow pokazuje wszystkie mozliwe kombinacje
+
+
+Select 
+{([Product].[Product Categories].[Subcategory].members)}
+ *
+{([Date].[Calendar Quarter of Year].[Calendar Quarter of Year].members)}  On Columns
+From [Adventure Works];
+
+
+
+
+
+
+
+/*---------------------------------------------------------------------------*/
+
+--	Funkcja EXISTS odpowiednik autoexist definiowany swiadomie
+--	Pozwala na ograniczenie zestawu pierwszego do wartoci ograniczonych za pomoca zestawu 
+--	drugiego, takich ktore w zestawie pierwszym pokrywaja sie z zestawem drugim
+
+--	wszystkie dane
+Select 
+{[Product].[Product].[All Products]} on Columns,
+{[Date].[Calendar].[Calendar Year]}	 on Rows
+From [Adventure Works]
+;
+/*	    All Products
+CY 2001	$8,065,435.31
+CY 2002	$24,144,429.65
+CY 2003	$32,202,669.43
+CY 2004	$16,038,062.60
+CY 2006	(null)
+*/
+
+Select 
+{[Product].[Product].[All Products]} on Columns,
+Exists(
+		[Date].[Calendar].[Calendar Year].members,
+		{
+		[Date].[Calendar].[Calendar Year].[cy 2001]
+		--,[Date].[Calendar].[Calendar Year].[Cy 2004]
+		}
+		)
+		 on Rows
+From [Adventure Works];
+
+-- to samo co powyzej tylko za pomoca WHERE
+
+Select 
+{[Product].[Product].[All Products]} on Columns
+From [Adventure Works]
+WHERE {[Date].[Calendar].[Calendar Year].[Cy 2001]};
+
+
+--  Pokazac wszystko co jest w zestawie 1 (ok 50 rekordow) co zwraca drugi (ok 1 rekordow)
+
+
+Select 
+{ ([Date].[Calendar].[CY 2002]),([Date].[Calendar].[CY 2003])} *
+{ ([Measures].[Reseller Sales Amount])}  On Columns,
+Exists
+( { [Product].[Category].[Category].Members } * { [Product].[Color].[Color].Members},
+		--ten set ogranicza zwracany wynik do wszystkich z wyjtkiem
+		--tych danych ktore pokrywaja sie z tym warunkiem (ALTERNATYW W POSTACI KLAUZULI WHERE)
+ 
+ {([Product].[Subcategory].[Mountain Bikes])})
+ 
+On Rows
+From [Adventure Works];
+
+-- Wszyskie dane dla porownania z przykladem powyzej prezentowanym
+
+Select 
+{ ([Date].[Calendar].[CY 2002]),([Date].[Calendar].[CY 2003])} *
+{ ([Measures].[Reseller Sales Amount])}  On Columns,
+ ({ [Product].[Category].[Category].Members } * { [Product].[Color].[Color].Members}
+ --,[Product].[Subcategory].[Mountain Bikes]
+ ) On Rows
+From [Adventure Works]
+WHERE {([Product].[Subcategory].[Mountain Bikes])};
+
+
+--	CWICZENIE 1
+--	Utworz raport dot. sprzedazy przez Internet z lista klientow 
+--	z Francji wykorzystujac funkcje Exists()
+
+SELECT [Measures].[Internet Sales Amount] ON Columns,
+EXISTS(
+[Customer].[Customer].[Customer].MEMBERS
+, {[Customer].[Customer Geography].[Country].[France]}
+) ON Rows
+FROM [Adventure Works];
+
+--	CWICZENIE 2
+--	Utworz raport dot. sprzedazy przez Internet z lista klientow 
+--	dokonujacych zakupu w promocji ktora rozpoczela sie 2002-07-01
+--	 wykorzystujac funkcje Exists()
+
+SELECT [Measures].[Internet Sales Amount] ON 0,
+EXISTS(
+[Customer].[Customer].[Customer].MEMBERS
+, {[Promotion].[Start Date].&[2002-07-01T00:00:00]}) ON 1 
+FROM [Adventure Works];
+
+/*-----------------------------------------------------------------------*/
+-- NON EMPTY
+-- bez pustych
+
+Select 
+{[Measures].[Reseller Sales Amount]} On Columns,
+NON EMPTY {[Date].[Month].[May 2002]}*{[Employee].[Employee].Members} On Rows
+From [Adventure Works];
+
+-- NON EMPTY moze w wynniku zlego zalozenia pokazac niewlasciwe dane
+-- bez pustych lub null o ktore jednak nam chodzilo
+-- dlatego przy dodatkowym zalozeniu(ach) np:
+-- dot. pracownikow w okreslonym czasie i dla measure
+-- nalezy korzytsac z EXIST
+-- Nalezy porownac z funkcja NonEmpty()!!!!!!!!!!!!!
+
+Select 
+{[Measures].[Reseller Sales Amount]} On Columns,
+{[Date].[Month].[May 2002]}*
+EXISTS
+(
+	{[Employee].[Employee].Members},{[Date].[Calendar].[Q2 CY 2002]},
+	"Sales Targets"
+) On Rows
+From [Adventure Works];
+
+-- Wszystkie dla przykladow powyzej
+
+Select 
+{[Measures].[Reseller Sales Amount]} On Columns,
+{[Date].[Month].[May 2002]}*
+(
+	{[Employee].[Employee].Members}
+	
+	) On Rows
+From [Adventure Works];
+
+

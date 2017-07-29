@@ -1,0 +1,148 @@
+--	Instrukcja SELECT definiuje nowa przestrzen kostki 
+--	Opisana za pomoca osi (COLUMS, ROWS	itp.)
+--	Klauzula FROM okrela kostke w oparciu o ktora nowa
+--	przestrzen jest tworzona
+--	Przyklad ponizej zbudowany jest z dwoch osi. Os (COLUMNS)
+--	sklada sie z kombinacji CY (trzy lata) i Lokalizacji (ta sama lokalizacja)
+--	os (ROWS) sklada sie z czterech elementow (Members)
+--	Na przecieciu tzrech elementow w osi COLUMNS i czterech elemetw w osi ROWS
+--	powstaje 12 pkt.wynikajacych z przeciecia kadej krotki (tuples)
+
+
+Select 
+{
+([Date].[Calendar].[CY 2002],[Geography].[Country].[United States]),
+([Date].[Calendar].[CY 2003],[Geography].[Country].[United States]),
+([Date].[Calendar].[CY 2004],[Geography].[Country].[United States])
+} On Columns,
+{
+([Product].[Product Categories].[Accessories]),
+([Product].[Product Categories].[Bikes]),
+([Product].[Product Categories].[Clothing]),
+([Product].[Product Categories].[Components])
+} On Rows
+From [Adventure Works];
+
+--	CWICZENIE 1
+--	Pokaz domyslna agregacje uzyskujac nastepujacy wynik
+/*                    CY 2002            CY 2003           CY 2004
+                United States      United States     United States
+Accessories        $61,263.90        $151,136.35        $76,027.18
+Bikes          $14,716,804.14     $16,139,984.68     $7,951,335.55
+Clothing          $317,939.41        $495,443.62       $197,590.92
+Components      $2,526,542.06      $3,284,551.84     $1,137,105.72
+*/
+
+
+SELECT
+   {
+   ([Date].[Calendar].[CY 2002], [Geography].[Country].[United States]),
+   ([Date].[Calendar].[CY 2003], [Geography].[Country].[United States]),
+   ([Date].[Calendar].[CY 2004], [Geography].[Country].[United States])
+   } ON COLUMNS,
+   {
+   ([Product].[Category].[Accessories]),
+   ([Product].[Category].[Bikes]),
+   ([Product].[Category].[Clothing]),
+   ([Product].[Category].[Components])
+   } ON ROWS
+FROM [Adventure Works];
+
+--	CWICZENIE 2
+--	Pokaz domyslna agregacje uzyskujac  wynik przezentujacy 
+--	sprzedaz w CY 2002, 2003 i 2004 posczegolnych
+--	kategorii produktow ogranicz wynik tylko  dla country: Germany
+/*            CY 2002	CY 2003     	CY 2004
+Accessories	  (null)	$20,630.27	    $14,452.79
+Bikes	      (null)	$820,513.65  	$722,502.00
+Clothing	  (null)	$43,613.54	    $28,005.90
+Components	  (null)	$214,109.23	    $120,160.66
+*/
+
+SELECT
+   {
+      ([Date].[Calendar].[CY 2002]),
+      ([Date].[Calendar].[CY 2003]),
+      ([Date].[Calendar].[CY 2004])
+   } ON COLUMNS,
+  {
+   ([Product].[Category].[Accessories]),
+   ([Product].[Category].[Bikes]),
+   ([Product].[Category].[Clothing]),
+   ([Product].[Category].[Components])} 
+   ON ROWS
+FROM [Adventure Works]
+WHERE [Geography].[Country].[Germany]
+;
+--	CWICZENIE 3
+--	Pokaz domyslna agregacje przezentujac 
+--	aprzedaz [Product Categories].[Bikes] w poszczegolnych latach
+--	zawezajac wynik tylko  dla country: United States
+--	i Sales Channel: Internet
+/*
+		CY 2002			CY 2003			CY 2004
+Bikes	$14,716,804.14	$16,139,984.68	$7,951,335.55
+*/
+SELECT
+   {
+      ([Date].[Calendar].[CY 2002]),
+      ([Date].[Calendar].[CY 2003]),
+      ([Date].[Calendar].[CY 2004])
+   } ON COLUMNS,
+   {[Product].[Product Categories].[Bikes]} 
+   ON ROWS
+FROM [Adventure Works]
+WHERE 
+(
+[Geography].[Country].[United States],
+[Sales Channel].[Sales Channel].[Internet]
+);
+
+
+--	CWICZENIE 4
+--	Napisz zapytanie zwracajace widoczne w raporcie
+--	agregacje w roku CY 2004
+--	tylko dla Product Categories: Bikes
+/*
+    	Internet Order Count   Internet Sales Amount   Reseller Order Count  Reseller Sales Amount
+CY 2004	    5,805					$9,162,324.85			  724				$13,399,243.18
+*/
+SELECT
+   {
+      [Measures].[Internet Order Count],
+      [Measures].[Internet Sales Amount],
+     [Measures].[Reseller Order Count],
+      [Measures].[Reseller Sales Amount]
+   } ON COLUMNS,
+   {
+	 [Date].[Calendar].[Calendar Year].[CY 2004] 
+   }  ON ROWS
+FROM [Adventure Works]
+WHERE 
+(
+[Product].[Product Categories].[Bikes]
+);
+
+--	CWICZENIE 5
+--	Napisz zapytanie zwracajace domyslna agregacje 
+--	prezentujac ja jako sprzedaz w europie dla 
+--	kwartalow w roku 2002
+--	ograniczajc wynik tylko do Sales Territory Region: France
+
+/*
+	    Q1 CY 2002	Q2 CY 2002	 Q3 CY 2002  	Q4 CY 2002
+Europe	  (null)	  (null)	 $523,999.23	$333,123.94
+*/
+SELECT {
+   [Calendar Quarter].[Q1 CY 2002], 
+   [Calendar Quarter].[Q2 CY 2002], 
+   [Calendar Quarter].[Q3 CY 2002], 
+   [Calendar Quarter].[Q4 CY 2002]
+   } On Columns,
+   {
+   [Sales Territory].[Sales Territory].[Group].[Europe]
+   } On Rows
+FROM [Adventure Works]
+WHERE 
+{[Sales Territory].[Sales Territory Region].[France]};
+

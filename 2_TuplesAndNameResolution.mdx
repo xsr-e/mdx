@@ -1,0 +1,162 @@
+--	UWAGA!!!
+--	Przyklad wymaga dodania dodatkowej hierarchi w wymiarze DATE o nazwie 
+--	CalendarFiscalYear
+--	i poziomach 
+--	Calendar Year -> Fiscal Year
+
+--	TUPLES (jak lokalizowane sa tuples)
+--	W celu rozwiazanie sciezki do tuples SSAS w pierwszej kolejnosci lokalizuje
+--	FY 2003 na poziomie Fiscal Year,  skojarzonym z CY 2003 poziomu Calendar Year w hierarchi
+--	CalendarFiscalYear
+
+-- Nalezy pamietac o kolejnosci [Dimension].[Hierarchy].[Member].
+-- gdy analizujemy sposb rozwiazywania nazwy - pokazac na metadanych, rozwinac..
+-- pamietac o rozwiazywaniu od prawej do lewej przez SSAS
+-- co potem tlumaczy problem pierwszego znalezionego member
+
+
+--	TUPLES
+Select 
+{([Product].[Product Categories].[Category].[Bikes])} on Columns,
+{([Date].[CalendarFiscalYear].[Calendar Year].[CY 2003].[FY 2003])} on Rows
+From [Adventure Works];
+
+Select 
+{([Product].[Product Categories].[Category].[Bikes],
+[Date].[Fiscal].[Fiscal Year].[FY 2003])} on Columns
+From [Adventure Works];
+
+--	TUPLES BLAD!!!
+--	PRZECZYTAC KOMUNIKAT BLEDU!!!
+Select 
+{([Product].[Product Categories].[Category].[Bikes],[Product].[Product Categories].[Category].[Accessories])} on Columns,
+{([Date].[CalendarFiscalYear].[Calendar Year].[CY 2003].[FY 2003],[Date].[CalendarFiscalYear].[Calendar Year].[CY 2003].[FY 2004])} on Rows
+From [Adventure Works];
+
+--	CWICZENIE z TUPLES
+--	pokazac sprzedaz na przecieciu w Country:Australia i Sales Reason:Marketing	
+//Select 
+//{(????)} on Columns,
+//{(????)} on Rows
+//From [Adventure Works];
+//
+//	Wynik:
+//				Australia
+//	Marketing	$1,594,335.38
+
+Select 
+{([Geography].[Geography].[Country].[Australia])} on Columns,
+{([Sales Reason].[Sales Reasons].[Reason Type].[Marketing])} on Rows
+From [Adventure Works];
+
+--	INNE PRZYKLADY TUPLES obrazuj:
+--	problem niejednoznacznej identyfikacji komorki
+Select 
+From [Adventure Works]
+Where
+(
+	[Date].[CalendarFiscalYear].[Calendar Year].[CY 2003].[FY 2003]
+);
+
+
+--	Przyklad pokazujacy w stosunku do wczesniejszego brak jednoznacznego
+--	wskazania na member Fy 2003, co oznacza w praktyce, ze SSAS pierwszy element ktory znajdzie 
+--	na poziomie Fiscal Year 
+
+Select 
+From [Adventure Works]
+Where
+(
+	[Date].[Calendar Year].[CY 2003], --[Date].[Calendar Year].&[2003]
+	[Date].[Fiscal Year].[FY 2003]    --[Date].[Fiscal Year].&[2003]
+);
+//*-------------------------------------------------------------------------*//
+-- COMPLETED TUPLES
+--	to tuple wykorzystujace wszystkie wymiary oraz measure w celu 
+--	identyfikacji wlasciwego pkt. w wielowymiarowej kostce
+Select 
+From [Adventure Works]
+Where
+([Measures].[Reseller Sales Amount],
+[Date].[Calendar],
+[Date].[Fiscal],
+[Delivery Date].[Calendar].[Calendar Year],
+[Delivery Date].[Fiscal].[Fiscal Year],
+[Destination Currency].[Destination Currency],
+[Employee].[Employee Department],
+[Geography].[Geography],
+[Product].[Product Categories] -- i wymieniamy wszystkie pozostale wymiary i members pozwalajace na ustalenie pkt w kostce
+);
+
+
+
+--	PARTIAL TUPLES
+--	domyslny sposob na identyfikacje wlasciwego pkt. w kostce w sytuacji
+--	gdy nie sa podane wszystkie wspolrzedne identyfikujace wlasciwe member to:
+--	mechanizm rozwiazywania dziala w nastepujacy sposob:
+--	1)Partial Tuple->2)Default Member->3)All Member->4)First Member->5)Completed Tuple
+
+
+Select 
+From [Adventure Works]
+Where
+([Date].[Calendar],
+ [Geography].[Geography]
+ --	nie korzytsamy z wszystkich wymiarow za pomoca
+ --	ktorych pkt w kostce mozna opisac tylko z wybranych
+ --	a wynik jest taki jak wczeniej
+ );
+ 
+ //*---------------------------------------------------------------------------*//
+--	TUPLES w oparciu o USER_HIERARCHIES
+--	to ewentualny problem wynikajacy z tworzenia tuples w oparciu o atrybuty hierarchi 
+--	a nie elementy w hierarchiach
+
+--	SSAS dokonuje translacji takich tuples do elementow w hierarchii
+--	Roznica pomiedzy przykladami ponizej 1 i 2 w nawiazaniu do rozwiazywania nazw patrz na poczatku
+--	1 [Date].[Fiscal Year].[FY 2003] i WYNIK to $27,921,670.52
+--	2 [Date].[CalendarFiscalYear].[Fiscal Year].[FY 2003] WYNIK to $15,921,423.19
+--	Pytanie dlaczego? Odpowiedz w przykladzie 3.
+
+--	1
+--	WYNIK to $27,921,670.52	
+Select 
+From [Adventure Works]
+Where
+([Date].[Fiscal Year].[FY 2003]); --[Date].[Fiscal].[Fiscal Year].&[2003]
+
+--	2
+--	 WYNIK to $15,921,423.19
+Select 
+From [Adventure Works]
+Where
+([Date].[CalendarFiscalYear].[Fiscal Year].[FY 2003]);
+
+--	3
+--	W przypadku gdy niejednoznacznie wkazujemy na element efekt jest 
+--	taki ze otrzymujemy pierwszy element a nie np:wszystkie
+
+Select 
+From [Adventure Works]
+Where
+(
+--	zamien komentarz z lini pierwszej na druga
+--	wykoanc jako set {} i wowczas wynik bedzie suma kazdej z wartosci 
+--{
+--[Date].[CalendarFiscalYear].[Calendar Year].&[2002].&[2003],
+[Date].[CalendarFiscalYear].[Calendar Year].&[2003].&[2003]
+--}
+);
+
+--	4
+--	
+Select 
+From [Adventure Works]
+Where
+(
+
+[Date].[Fiscal Year].[FY 2002],
+[Date].[CalendarFiscalYear].[Calendar Year].[CY 2002].[FY 2003]
+);
+
+

@@ -1,0 +1,342 @@
+--	OPERATORY
+--	
+--	
+
+With 
+Member [Product].[Category].[NewMember] As
+ 5+5*15/5 --zwrocic uwage na kolejnosc oraz uzycie nawiasow
+ 
+ -- przyklady operatorow w wyrazeniach np 2>0, 1+1 , 
+ -- inne przyklady wyrazen z uzyciem funkcji:
+ -- VBAMDX!now(),FORMAT_STRING="short date"
+ 
+ -- wyrazenie dynamiczne oparte o tuple patrz w sekcji wyrazenia dynamiczne
+ -- [Product].[Product Categories].[Category].&[1]=[Product].[Product Categories].[Category].&[3]
+
+Select 
+{([Product].[Category].[NewMember])} On Columns
+From [Adventure Works];
+
+
+/*-----------------------------------------------------------------------------------*/
+--	CALCULATED MEMBER
+--	dodajemy za pomoca polecenia WITH, dziala w konteksie zapytania dla 
+--	ktorego zostalo dodane
+--	Ponizszy przyklad torzy nowe Member (Calculated Member)o nazwie NewMember w 
+--	[Product].[Category].[All Products] 
+--	(elementy wyliczne musza zostac przypisane podobnie jak inne elementy do hierarchii)
+--	ktorego zadaniem jest wykonanie operacji na wyrazeniu 1+1 
+
+
+
+With 
+Member [Product].[Category].[All Products].[NewMember] As
+1+1
+Select 
+{
+	([Date].[Calendar].[CY 2003]),
+	([Date].[Calendar].[CY 2004])
+} On Columns,
+{
+	([Product].[Category].[Accessories]),
+	([Product].[Category].[Bikes]),
+	([Product].[Category].[Clothing]),
+	([Product].[Category].[Components]),
+	([Product].[Category].[NewMember])
+} On Rows
+From [Adventure Works];
+
+--	UWAGA!!!
+--	Nawiazujac do wczesniej omawianej funkcji Members, zwracajacej elementy 
+--	przechowywane w kontekscie atrybutu lub hierarchi zdefiniowanej przez uzytkownika
+--	nalezy miec na uwadze ze funkcja nie dziala dla elementow wyliczeniowych
+--	przyklad ponizej:
+--	Pytanie jak problem rozwiazac? Odpowiedz nastepny przyklad.
+With 
+Member [Product].[Category].[All Products].[NewMember] As
+1+1
+Select 
+{
+	([Date].[Calendar].[CY 2003]),
+	([Date].[Calendar].[CY 2004])
+} On Columns,
+{
+	([Product].[Category].[Category].Members)
+} On Rows
+From [Adventure Works];
+
+--	Funkcja ALLMembers
+--	Pozwala nam na zwracanie wszystkich elementow bez wzgledu czy sa
+--	to zwykle elementy czy elementy wyliczeniowe 
+--	do zestawu wynikowego
+
+With 
+Member [Product].[Category].[All Products].[NewMember] As
+1+1
+Select 
+{
+	([Date].[Calendar].[CY 2003]),
+	([Date].[Calendar].[CY 2004])
+} On Columns,
+{
+	([Product].[Category].[Category].AllMembers)
+} On Rows
+From [Adventure Works];
+
+--	Przyklad gdy NewMember2 zalezy od NewMember1
+
+With 
+Member [Product].[Category].[NewMember1] As
+ 15/5
+Member [Product].[Category].[NewMember2] As
+ [Product].[Category].[NewMember1]*5
+ 
+Select 
+{([Product].[Category].[NewMember2])} On Columns
+From [Adventure Works];
+
+
+
+
+
+
+
+/*-----------------------------------------------------------------------------*/
+--	DYNAMICZNE WYRAZENIA
+--	to elementy wyliczeniowe oparte o wyrazenie utworzone w oparciu
+--	o tuple (wskazujace na komorke, ktora zawiera wartosc)
+
+With 
+Member [Product].[Category].[All Products].[NewMember] As
+([Product].[Category].[Bikes] )+1 --definicja wyrazenie dynamicznego oparta o tuple
+Select 
+{
+	([Date].[Calendar].[CY 2003]),
+	([Date].[Calendar].[CY 2004])
+} On Columns,
+{
+	([Product].[Category].[Category].AllMembers)
+} On Rows
+From [Adventure Works];
+
+--	Przyklad wyrazenia dynamicznego
+--	tworzacego nowy element o nazwie SumaBikeAccessories
+
+With 
+Member [Product].[Category].[All Products].[SumaBikesAccessories] As
+([Product].[Category].[Bikes] )+([Product].[Category].[Accessories])
+Select 
+{
+	([Date].[Calendar].[CY 2003]),
+	([Date].[Calendar].[CY 2004])
+} On Columns,
+{
+	([Product].[Category].[Category].AllMembers)
+} On Rows
+From [Adventure Works];
+
+
+--	ERROR !!!!
+--	Problem niekonczoczego sie odwolania
+--	polega na tym ze SSAS prubuje wyliczyc wartosc w kontekscie tuples 
+--	uzytych do zdefiniowania elementu wyliczeniowego i nie potrafi rozwiazac w tym konteksie nazw
+--	taki nie rozwiazywalny proces jest okreslany pojeciem  "infinite recursion error"
+--	w celu unikniecia takiego bledu nalezy upewnic sie
+--	ze kazde z tuple w wyrazeniu definiujacym element wyliczeniowy
+--	ma odwolanie do elementu w hierarchii do ktorego element wyliczeniowy
+--	zostal przypisany
+
+With 
+Member [Product].[Category].[All Products].[SumaBikeAccessories] As
+( [Geography].[Country].[United States])+([Geography].[Country].[Canada])
+Select 
+{
+	([Date].[Calendar].[CY 2003]),
+	([Date].[Calendar].[CY 2004])
+} On Columns,
+{
+	([Product].[Category].[Category].AllMembers)
+} On Rows
+From [Adventure Works];
+
+--	ERROR!!! Controling Solve Order
+--	Przyklad niewlasciwego oszacowania wartosci dla wyraznie dynamicznego 
+--	powodujacy zwrocenie niewlasciwej wartosci
+--	przyklad rozwiazania problemu ponizej
+
+With
+Member [Product].[Category].[All Products].[PercentBike] AS
+([Product].[Category].[Bikes])/([Product].[Category].[All Products]) --wartosc % w sprzedazy dla Bikes
+,FORMAT_STRING="Percent"
+--	Dodajemy dodatkowy element powodujacy niewlasciwa kolejnosc 
+--	usunac komentarz // w 3 liniach i zwrococ uwage na 178.87%
+//Member [Measures].[SumaDlaSalesAmount] AS
+//([Measures].[Reseller Sales Amount])+([Measures].[Internet Sales Amount])
+Select 
+{
+	[Measures].[Reseller Sales Amount],
+	[Measures].[Internet Sales Amount]
+	--	dodatkowa wartosc dla wyrazenia
+	--	zwrocic uwage na wartosc PercentBike dla SumaDlaSalesAmount !!!!
+	--	mamy przyklad niewlasciwego pod sumowania wartosci
+	
+	//,[Measures].[SumaDlaSalesAmount]
+}On columns,
+{[Product].[Category].ALLMEMBERS}
+On rows
+From [Adventure Works];
+
+--	Ustalanie kolejnosci rozwiazania problemu "Controling Solve Order"
+--	Kolejnosc wg ktorej powinnyb byc wyliczane elementy wyliczeniowe jest ustalana
+--	za pomoca wlasciwosci SOLVE_ORDER od 1 do 65535
+--	w pierwszej kolejnosci te elemety wyliczeniowe ktore maja najnizsza wartosc
+--	domyslnie ma wartosc 0
+
+--	zwrocic dodatkowo uwage na wlasciwosc FORMAT_STRING i jej wartosci
+
+With
+Member [Product].[Category].[All Products].[PercentBike] AS
+([Product].[Category].[Bikes])/([Product].[Category].[All Products]) --wartosc % w sprzedazy dla Bikes
+,FORMAT_STRING="Percent"
+,SOLVE_ORDER = 2
+ 
+Member [Measures].[SumaDlaSalesAmount] AS
+([Measures].[Reseller Sales Amount])+([Measures].[Internet Sales Amount])
+,SOLVE_ORDER = 1
+Select 
+{
+	[Measures].[Reseller Sales Amount],
+	[Measures].[Internet Sales Amount],
+	[Measures].[SumaDlaSalesAmount]
+}On columns,
+{[Product].[Category].ALLMEMBERS}
+On rows
+From [Adventure Works];
+
+
+/*--------------------------------------------------------------------------*/
+--	CWICZENIE 1
+--	Utworz raport pokazujacy sprzedaz w roku 2003 dla Accessories i Bikes
+--	oraz nowa measure o nazwie SumBikesAccessories bedace suma Accessories i Bikes
+
+/*
+	                CY 2003
+Accessories     	$296,532.88
+Bikes	            $25,551,775.07
+SumBikesAccessories	$25,848,307.95
+*/ 
+WITH
+MEMBER [Product].[Category].[All Products].[SumBikesAccessories] as
+   ([Product].[Category].[Bikes]) + ([Product].[Category].[Accessories])
+SELECT
+   {
+      ([Date].[Calendar Year].[CY 2003])
+   } ON COLUMNS,
+   {
+      ([Product].[Category].[Accessories]) ,
+      ([Product].[Category].[Bikes]),
+      ([Product].[Category].[SumBikesAccessories])
+   } ON ROWS
+FROM [Adventure Works];
+
+
+
+--	CWICZENIE 2
+--	Utworz raport pokazujacy wielkosc sprzedazy Reseller Sales Amount i Internet Sales Amount
+--	dla wszystkich produktow lacznie z ALL i 
+--	dodatkowo wylicz w calej sprzedazy procentowy udzial Bikes 
+--	prezentujac wynik w raporcie jako wartosci %
+
+/*             Reseller Sales Amount  Internet Sales Amount
+All Products          $80,450,596.98         $29,358,677.22
+Accessories              $571,297.93            $700,759.96
+Bikes                 $66,302,381.56         $28,318,144.65
+Clothing               $1,777,840.84            $339,772.61
+Components            $11,799,076.66                 (null)
+Percent Bikes                 82.41%                 96.46%
+*/
+
+WITH
+MEMBER [Product].[Category].[All Products].[PercentBikes] as
+   ([Product].[Category].[Bikes])/([Product].[Category].[All Products])
+   ,FORMAT_STRING="Percent"
+SELECT
+   {
+      ([Measures].[Reseller Sales Amount]),
+      ([Measures].[Internet Sales Amount])
+   } ON COLUMNS,
+   {[Product].[Category].AllMembers} ON ROWS
+FROM [Adventure Works];
+
+
+--	CWICZENIE 3
+--	Utworz raport pokazujacy symulacje upustu dla wszystkich produktow z kategori Bikes
+--	zmieniajac aktualna wartosc Discount Percentage o 25% 
+--	dodatkowo pokaz jak zmieni sie srednia cena Reseller Average Unit Price po zmianie
+--	Discount Percentage
+--	uzyskane wartosci w raporcie pokaz w wlasciwym formacie danych Percent i Currency
+
+
+WITH 
+   MEMBER [Measures].[SpecialDiscount] AS
+   [Measures].[Discount Percentage] * 1.25, 
+   FORMAT_STRING = 'Percent'
+   
+   MEMBER [Measures].[SpecialDiscountedAmount] AS
+   [Measures].[Reseller Average Unit Price] * [Measures].[SpecialDiscount], 
+   FORMAT_STRING = 'Currency'
+   
+SELECT 
+   {[Measures].[SpecialDiscount], [Measures].[SpecialDiscountedAmount]} on COLUMNS,
+   [Product].[Product].MEMBERS  ON Rows
+FROM [Adventure Works]
+WHERE [Product].[Category].[Bikes];
+
+
+--	CWICZENIE 3
+--	Utworz raport pokazujacy sprzeda w roku 2002 dla Reseller Sales Amount, Internet Sales Amount
+--	oraz wartosc SumaSalesAmount bedaca suma dla Reseller Sales Amount, Internet Sales Amount
+--	dodatkowo pokaz wartosc procentowa do calosci sprzedazy produktow w kategorii
+--	Bikes i Clothing oraz ich sume PercentSum
+--	wynik ogranicz tylko 
+
+/*	            Reseller Sales Amount	Internet Sales Amount	SumaSalesAmount
+All Products	$24,144,429.65	        $6,530,343.53       	$30,674,773.18
+Accessories	    $92,735.35	            (null)	                $92,735.35
+Bikes	        $19,956,014.67       	$6,530,343.53	        $26,486,358.20
+Clothing	    $485,587.15	            (null)	                $485,587.15
+Components	    $3,610,092.47       	(null)	                $3,610,092.47
+PercentClothing	2.01%	                (null)	                1.58%
+PercentBike     82.65%	                100.00%	                86.35%
+PercentSum   	84.66%              	100.00%	                87.93%
+*/
+With
+Member [Product].[Category].[All Products].[PercentClothing] AS
+([Product].[Category].[Clothing])/([Product].[Category].[All Products]) --wartosc % w sprzedazy dla Bikes
+,FORMAT_STRING="Percent"
+,SOLVE_ORDER = 2
+
+Member [Product].[Category].[All Products].[PercentBike] AS
+([Product].[Category].[Bikes])/([Product].[Category].[All Products]) --wartosc % w sprzedazy dla Bikes
+,FORMAT_STRING="Percent"
+,SOLVE_ORDER = 2
+
+Member [Product].[Category].[All Products].[PercentSum] AS
+([Product].[Category].[All Products].[PercentClothing]
+  + [Product].[Category].[All Products].[PercentBike]) --wartosc % w sprzedazy dla Bikes
+,FORMAT_STRING="Percent"
+,SOLVE_ORDER = 2
+ 
+Member [Measures].[SumaSalesAmount] AS
+([Measures].[Reseller Sales Amount])+([Measures].[Internet Sales Amount])
+,SOLVE_ORDER = 1
+Select 
+{
+	[Measures].[Reseller Sales Amount],
+	[Measures].[Internet Sales Amount],
+	[Measures].[SumaSalesAmount]
+}On columns,
+{[Product].[Category].ALLMEMBERS}
+On rows
+From [Adventure Works]
+Where {[Date].[Calendar].[Calendar Year].&[2002]};

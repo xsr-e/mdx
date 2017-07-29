@@ -1,0 +1,202 @@
+--  Funkcje do nawigacji pomiedzy atrybutami w hierarchii
+--	pozwalaja nam nie tylko na nawigacje
+--	ale rowniez na prezentacje danych w innym kontekscie
+--	ponizszy przyklad prezentuje przykladowe infomacje
+--	czy mozna pokazac cos wiecej?
+--	odpowiedz ponizej
+--	
+
+SELECT
+	{[Measures].[Order Count]} On Columns,
+    {
+     --[Product].[Product Categories].[Subcategory].&[1]
+     --[Product].[Product Categories].[Subcategory].&[1].Parent
+     --[Product].[Product Categories].[Subcategory].&[1].Parent.children
+	 --[Product].[Product Categories].[Subcategory].&[1].Siblings
+	 [Product].[Product Categories].[Subcategory].&[1].FIRSTCHILD
+    } ON Rows
+FROM [Adventure Works];
+
+
+SELECT
+    {([Measures].[Reseller Sales Amount])} ON COLUMNS,
+    {[Product].[Product Categories].Members} ON ROWS
+FROM [Adventure Works];
+
+--	dodanie dodatkowych info wykorzystujac funkcje nawigacji
+With
+Member [Measures].[ParentMember] As
+[Product].[Product Categories].CURRENTMEMBER.PARENT.Name
+
+SELECT
+    {([Measures].[Reseller Sales Amount]),[Measures].[ParentMember]} ON COLUMNS,
+    {[Product].[Product Categories].Members} ON ROWS
+FROM [Adventure Works];
+
+
+--	Cwiczenie 1
+--	Wykorzystanie funkcji nawigacji do identyfikacji produktu 
+--	dla ktorego liczymy procent w calosci
+--	1.#INF blad dzielenia przez 0
+
+With
+Member [Measures].[ParentMember] As
+[Product].[Product Categories].CURRENTMEMBER.PARENT.Name
+
+Member [Measures].[PercentParent] As
+([Measures].[Reseller Sales Amount])
+/
+([Product].[Product Categories].CURRENTMEMBER.PARENT,[Measures].[Reseller Sales Amount])
+,FORMAT_STRING = 'Percent'
+SELECT
+    {([Measures].[Reseller Sales Amount])
+    ,[Measures].[ParentMember]
+    ,[Measures].[PercentParent]} ON COLUMNS,
+    {[Product].[Product Categories].Members} ON ROWS
+FROM [Adventure Works];
+
+--	Cwiczenie 2
+--	poprawiamy dodajac logike sprawdzajaca czy jest parent czy nie 
+--	i w zaleznosci czy true lub false dodnujemy dzielenia
+
+With
+Member [Measures].[ParentMember] As
+[Product].[Product Categories].CURRENTMEMBER.PARENT.Name
+
+Member [Measures].[PercentParent] As
+IIF (
+		[Product].[Product Categories].CURRENTMEMBER.PARENT is Null
+		,""
+		,(([Measures].[Reseller Sales Amount])
+		 /
+	     ([Product].[Product Categories].CURRENTMEMBER.PARENT,[Measures].[Reseller Sales Amount])
+		 )
+	 ),FORMAT_STRING = 'Percent'
+SELECT
+    {([Measures].[Reseller Sales Amount])
+    ,[Measures].[ParentMember]
+    ,[Measures].[PercentParent]} ON COLUMNS,
+    {[Product].[Product Categories].Members} ON ROWS
+FROM [Adventure Works];
+
+
+-- inne przyklady uzycia funkcji 
+With
+Member [Measures].[Family] As
+[Product].[Product Categories].CURRENTMEMBER.Parent.name
+SELECT
+    {([Measures].[Reseller Sales Amount])
+   ,([Measures].[Family])
+    } ON COLUMNS,
+    {[Product].[Product Categories].[Category].&[1].
+    Parent -- zamieniic na Siblings, Children
+    } ON ROWS
+FROM [Adventure Works];
+/*---------------------------------------------------------------------*/
+
+--	ANCESTOR i ANCESTORS
+--	rozwinac hierarchie	[Date].[Calendar].[Month].&[2001]&[7]
+--	i dwa poziomy wyzej [Date].[Calendar].[Calendar Semester].&[2001]&[2]
+
+Select 
+  {[Measures].[Reseller Sales Amount]} ON COLUMNS,
+  {
+  (Ancestor(
+  [Date].[Calendar].[Month].&[2001]&[7],2 -- zastapic  level 2 odpowiednikiem typu distance [Date].[Calendar].[Calendar Semester]
+  )
+  )
+  } ON Rows
+FROM [Adventure Works];
+
+--	Ascendants
+
+Select 
+  {[Measures].[Reseller Sales Amount]} ON COLUMNS,
+  {
+  (Ascendants(
+  [Geography].[Geography].[City].&[Sydney]&[NSW]
+  )
+  )
+  } ON Rows
+FROM [Adventure Works];
+
+--	Descendants
+
+SELECT Descendants
+   ([Geography].[Geography].[Country].&[United States]
+      //, [Geography].[Geography].[Country]
+   , [Geography].[Geography].[City]
+      //, [Geography].[Geography].Levels (3)
+      //, SELF 
+      //, AFTER
+      , BEFORE
+      // BEFORE_AND_AFTER
+      //, SELF_AND_AFTER
+      //, SELF_AND_BEFORE
+      //,SELF_BEFORE_AFTER
+      //,LEAVES 
+   ) ON 0
+FROM [Adventure Works];
+
+--	Cwiczenie 2
+--	Utworz raport prezentujacy wartosc Internet Sales Amount dla kazdej 
+--	z State_Province w France i wartosc % w stosunku do wartosci 
+--	calkowitej w France
+--	
+
+WITH MEMBER [Measures].[PercentALL] AS
+  [Measures].[Internet Sales Amount] / 
+   (
+   [Measures].[Internet Sales Amount],  
+      Ancestor 
+         (
+         [Customer].[Customer Geography].CurrentMember,
+            [Customer].[Customer Geography].[Country]
+         )
+   ), FORMAT_STRING = '0%'
+SELECT {[Measures].[Internet Sales Amount], [Measures].[PercentALL]} ON 0,
+{
+   Descendants 
+      (
+        [Customer].[Customer Geography].[Country].[France],
+           [Customer].[Customer Geography].[State-Province], SELF 
+      )
+} ON 1
+FROM [Adventure Works];
+
+
+-- IsAncestor(), IsSibling(), IsLeaf()
+WITH MEMBER [MEASURES].[ISANCESTOR] AS 
+IsAncestor([Date].[Fiscal].CurrentMember, [Date].[Fiscal].[Month].&[2003]&[1]) 
+
+SELECT [MEASURES].[ISANCESTOR] ON 0, 
+[Date].[Fiscal].MEMBERS ON 1 
+FROM [Adventure Works];
+
+--	Cwiczenie 3
+--	Utworz raport prezentujacy ilosc potomkow w kontekscie Product Categories
+--	sprawdzajac czy member ma potomka jezeli tak to 
+--	w raporcie pokaz ilosc potomkow w kontekscie danego member
+--	jezeli nie ma potomka wyswietl 0
+
+With Member [MEASURES].[NumberChildren] As 
+IIF(
+	IsLeaf ([Product].[Product Categories].CURRENTMEMBER),
+	"0",
+	Count([Product].[Product Categories].CURRENTMEMBER.CHILDREN)
+	)
+Select 
+ {[MEASURES].[NumberChildren]} On COLUMNS,
+ {[Product].[Product Categories].members} On ROWS
+From [Adventure Works];
+
+-- Lag(), Lead()
+
+SELECT [Date].[Fiscal].[Month].[February 2002].Lag(-20) ON 0
+FROM [Adventure Works];
+
+SELECT [Date].[Fiscal].[Month].[February 2002].Lead(1) ON 0
+FROM [Adventure Works];
+
+
+

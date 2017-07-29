@@ -1,0 +1,38 @@
+
+//0
+Select
+From [Adventure Works];
+--do prezentacji wlasciwosci komorki
+--CELL PROPERTIES FORMATTED_VALUE, FORMAT_STRING;
+//1
+//Omowic instrukcje select oraz zwracany wynik
+//pokazac jak wybrac kostke, oraz skorzystac z wymiarow
+//SELECT, FROM, ON COLUMNS, ON ROWS
+Select 
+[Product].[Category].[All Products] on columns,
+[Geography].[Geography].[Country] on rows
+from [Adventure Works];
+//1a bledy: literowka, niewlasciwa kostka
+Select 
+[Product].[Category].[All Products] on columns,
+[Geography].[Geography].[Country] on rows
+from [Adventure Works1]; //literowka
+
+//2
+//zmiana ukladu wyswietlania wiersz na kolumny
+Select 
+[Product].[Category].[All Products] on rows,
+[Geography].[Geography].[Country] on columns
+from [Adventure Works];
+
+//3
+//wartocs ALL
+Select from [Adventure Works];
+
+//4
+
+Select 
+{[Geography].[Geography].[Country]} on columns,
+ {[Product].[Product Categories].Children} on rows
+from [Adventure Works];
+

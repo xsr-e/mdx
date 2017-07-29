@@ -1,0 +1,136 @@
+--	Przyklad Set (PRAWIDOWEGO!!!)
+--	W ponizszym przykladzie dwa zestawy (sets) pierwszy skladajacy sie
+--	z trzech krotek (tuples), opartych o odwolania do dwoch elementow (members)
+--	(Data i lokalizacja geograficzna)
+--	drugi set skaldajacy sie z czterech tuples z wymiaru Produkt.
+
+Select 
+{
+([Date].[Calendar].[CY 2002],[Geography].[Country].[United States]),
+([Date].[Calendar].[CY 2003],[Geography].[Country].[United States]),
+([Date].[Calendar].[CY 2004],[Geography].[Country].[United States])
+} On Columns,
+{
+([Product].[Category].[Accessories]),
+([Product].[Category].[Bikes]),
+([Product].[Category].[Clothing]),
+([Product].[Category].[Components])
+} On Rows
+From [Adventure Works];
+
+--	Przyklad Set (Z BLEDEM) wykonac i zwrocic uwage na komunikat bledu.
+--	W drugim zestawie dodano dodatkowe tuples z innego poziomu hierarchi w tym samym wymiarze
+--	zwrocic uwage ze tuples musza pochodzic z tego samego wymiaru lub 
+--	problem rozwiazujemy korzystajac z wymiarow wspoldzielonych
+Select 
+{
+([Date].[Calendar].[CY 2002],[Geography].[Country].[United States]),
+([Date].[Calendar].[CY 2003],[Geography].[Country].[United States])
+} On Columns,
+{
+([Product].[Category].[Accessories]),
+([Product].[Category].[Bikes]),
+([Product].[Category].[Clothing]),
+([Product].[Category].[Components]),
+([Product].[Subcategory].[Mountain Bikes])
+} On Rows
+From [Adventure Works];
+
+--	Rozwiazanie problemu z tuples z roznych hierarchii
+--	polega na wykorzystaniu "Shared dimensioanlity" oznacza to
+--	ze zestawy zawieraja wiecej niz jedno odwolanie (adres) w hierarchii w
+--	w takiej samej kolejnosci
+--	UWAGA zamien w pierwszym set-cie  na :
+--	[Geography].[Country].[United States],[Date].[Calendar].[CY 2002]
+
+Select 
+{
+-- do pokazania bledu dot. niezachowania kolejnosci w adresie
+-- wniosek: wszyskto musi byc w takiej samej kolejnosci!!!
+--([Geography].[Country].[United States],[Date].[Calendar].[CY 2002]),
+([Date].[Calendar].[CY 2002],[Geography].[Country].[United States]),
+([Date].[Calendar].[CY 2004],[Geography].[Country].[United States])
+} On Columns,
+{
+([Product].[Product Categories].[Accessories]),
+([Product].[Product Categories].[Bikes]),
+([Product].[Product Categories].[Clothing]),
+([Product].[Product Categories].[Components]),
+([Product].[Product Categories].[Mountain Bikes])
+} On Rows
+From [Adventure Works];
+
+--	CWICZENIE 1 z TUPLES
+--	Pokaz sprzedaz (domyslne measures) dla
+--	4 kwartalow w roku kalendarzowym 2002
+--	stworz tuples obejmujace podany przedzial czasu
+--	WYNIK
+// Q1 CY 2002	  Q2 CY 2002	 Q3 CY 2002	    Q4 CY 2002
+// $4,069,186.04  $4,153,820.42  $8,880,239.44	$7,041,183.75
+
+--	Rozwiazanie 1
+SELECT {
+   ([Calendar Quarter].[Q1 CY 2002]), 
+   ([Calendar Quarter].[Q2 CY 2002]), 
+   ([Calendar Quarter].[Q3 CY 2002]), 
+   ([Calendar Quarter].[Q4 CY 2002])
+   } ON Columns
+FROM [Adventure Works];
+
+--	Rozwiazanie 2
+SELECT {
+   ([Date].[Calendar].[Calendar Quarter].&[2002]&[1]), 
+   ([Date].[Calendar].[Calendar Quarter].&[2002]&[2]), 
+   ([Date].[Calendar].[Calendar Quarter].&[2002]&[3]), 
+   ([Date].[Calendar].[Calendar Quarter].&[2002]&[4])
+   } ON Columns
+FROM [Adventure Works];
+
+--	CWICZENIE 2 z TUPLES
+--	pokaz w wyniku dla measures: Reseller Sales Amount
+--	ogolna wartosc sprzedazy produktow z Category:Bikes
+--	Subcategory: Mountain Bikes
+--	majaca miejsce podczas roku kalendarzowego i fiskalengo
+--	w wszystkich okresach zarejstrowanego czasu
+
+
+--	Rozwiazanie 1
+SELECT
+//{[Product].[Category].[Bikes]} On Columns,
+//{[Product].[Subcategory].[Mountain Bikes]} On Rows
+FROM [Adventure Works]
+WHERE (
+    [Product].[Subcategory].[Mountain Bikes],
+    [Date].[Calendar Year].[All Periods],
+    [Date].[Fiscal Year].[All Periods],
+    [Product].[Category].[Bikes],
+    [Measures].[Measures].[Reseller Sales Amount]
+   );
+   
+   
+ 
+ 
+ 
+ --	Eliminacja z set-u powtorzen
+ -- Funkcja DISTINCT()
+ --	przydatna gdy sety s tworzone w oparciu o zlozona logike wyrazen MDX
+ 
+ SELECT
+   {
+      ([Geography].[Country].[United States], [Date].[Calendar].[CY 2004]),
+      ([Geography].[Country].[United States], [Date].[Calendar].[CY 2003]),
+      ([Geography].[Country].[United States], [Date].[Calendar].[CY 2002])
+   } ON COLUMNS,
+--DISTINCT(
+   {
+      ([Product].[Product Categories].[Accessories]),
+      ([Product].[Product Categories].[Accessories]),
+      ([Product].[Product Categories].[Bikes]),
+      ([Product].[Product Categories].[Clothing]),
+      ([Product].[Product Categories].[Components]),
+      ([Product].[Product Categories].[Mountain Bikes])
+   }
+--)
+ ON ROWS
+FROM [Adventure Works]
+ 
