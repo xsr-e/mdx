@@ -7,17 +7,17 @@ From language fundamentals to advanced mdx queries.
 * core concepts
 
 Contents:
-* 01 Introduction.mdx
-* 02 TuplesAndNameResolution.mdx
-* 03 Set.mdx
-* 04 SelectFrom.mdx
-* 05 SetDynamic.mdx
-* 06 OperatorsCalculatedMembers.mdx
-* 07 ComplexExpressions.mdx
-* 08 ComplexSets.mdx
-* 09 UnionIntersectExcept.mdx
-* 10 Aggregations.mdx
-* 11 Navigation.mdx
-* 12 Time.mdx
-* 13 AppendixA.mdx
-* 14 AppendixB.mdx
+* 01 Introduction
+* 02 Tuples And Name Resolution
+* 03 Set
+* 04 Select From
+* 05 Set Dynamic
+* 06 Operators Calculated Members
+* 07 Complex Expressions
+* 08 Complex Sets
+* 09 Union Intersect Except
+* 10 Aggregations
+* 11 Navigation
+* 12 Time
+* 13 Appendix A
+* 14 Appendix B
